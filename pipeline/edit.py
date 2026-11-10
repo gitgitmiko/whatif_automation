@@ -155,6 +155,20 @@ def cut_keys(keys, cam, kind, entering, h, rng):
     return None
 
 
+def moving(d, x, length):
+    """The scene's Omni clip (clips.py) fitted to the scene: no sound of its own, 1080p30, played up to 1.5x slower
+    to fill the scene, then held on its last frame. None when the scene has no clip."""
+    raw = d / "images" / f"{x['i']:04}.omni.mp4"
+    if not raw.exists():
+        return None
+    out = d / "images" / f"{x['i']:04}.scene.mp4"
+    slow = min(max(length / duration(raw), 1.0), 1.5)
+    ff("-i", str(raw), "-an", "-vf", f"scale=1920:1080,setsar=1,setpts={slow:.4f}*PTS,fps=30,"
+       f"tpad=stop_mode=clone:stop_duration={length + 1:.2f}", "-t", f"{length + 0.2:.2f}",
+       "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(out))
+    return out
+
+
 def ambient(d, seconds):
     """A low drone with slow swells under the whole video, synthesised so it carries no licence."""
     out = d / "ambient.wav"
@@ -241,14 +255,18 @@ def main(slug, limit=None):
     ff("-i", str(d / "narration.mp3"), "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "2", str(voice))
     audio = q("media_import", path=P, file=str(voice))["createdId"]
 
-    clips = []
+    clips, animated = [], set()
     for n, x in enumerate(scenes):
-        media = q("media_import", path=P, file=str(d / "images" / f"{x['i']:04}.jpg"))["createdId"]
-        cid = q("clip_add", path=P, mediaId=media, trackId=HIGH if n % 2 else LOW, start=x["start"])["createdId"]
         length = x["end"] - x["start"] + (XF if n < len(scenes) - 1 else 0)
-        q("clip_trim", path=P, clipId=cid, edge="end", delta=length - 5.0)
+        clip = moving(d, x, length)
+        media = q("media_import", path=P, file=str(clip or d / "images" / f"{x['i']:04}.jpg"))["createdId"]
+        cid = q("clip_add", path=P, mediaId=media, trackId=HIGH if n % 2 else LOW, start=x["start"])["createdId"]
+        # A still picture comes in 5 s long; a clip as long as its file.
+        q("clip_trim", path=P, clipId=cid, edge="end", delta=length - (duration(clip) if clip else 5.0))
         clips.append((cid, length))
-    log(f"placed {len(clips)} images in {time.time() - t0:.0f}s")
+        if clip:
+            animated.add(n)
+    log(f"placed {len(clips)} scenes ({len(animated)} moving) in {time.time() - t0:.0f}s")
 
     # One cut per scene change, never the same twice running. Odd scenes sit on the upper lane and draw both
     # their entry and their exit, and a picture has one mask, so those two never both need one.
@@ -258,8 +276,10 @@ def main(slug, limit=None):
         avoid = set(MASKED) if n % 2 == 0 and cuts[n - 1] in MASKED else ()
         cuts.append(pick(rng, names, cuts[-1], avoid=avoid))
     moves = []
-    for _ in scenes:
+    for n in range(len(scenes)):
         moves.append(pick(rng, MOVES, moves[-1] if moves else None, [mv[1] for mv in MOVES]))
+        if n in animated:  # the clip moves by itself; a camera move on top would fight it
+            moves[-1] = MOVES[0]
     cmds, masks = [], {}
     for n, (cid, length) in enumerate(clips):
         keys = Keys()

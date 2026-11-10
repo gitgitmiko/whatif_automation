@@ -6,21 +6,21 @@ from common import *
 from images import gflow
 
 FONT = ROOT / "assets" / "fonts" / "Bangers-Regular.ttf"
-# Channel mascot: the same stickman in every thumbnail, so viewers learn to spot the channel in their feed.
-MASCOT = ("a cheerful anime-fan stickman (the channel mascot) with a perfectly round plain WHITE head, thick black outline, "
-          "two black dot eyes behind big round black-framed glasses, no hair, a plain white headband tied around the forehead "
-          "with knot tails sticking out, and an oversized purple hoodie with a cute cartoon cat face")
-STYLE = ("YouTube thumbnail for a horror story, bold detailed hand-drawn cartoon, dark night scene with strong high contrast: "
+# Channel mascot: the same face in every thumbnail, so viewers learn to spot the channel in their feed.
+MASCOT = ("Gitgit, the channel's main character: a young Indonesian man in his twenties with warm tan skin, thick CURLY wavy "
+          "black hair parted exactly in the MIDDLE with curls falling to both sides of the forehead, and exactly one small "
+          "dark MOLE on the cheek on the LEFT side of the picture, just below that eye and close to the nose")
+STYLE = ("YouTube thumbnail for a horror story, dark horror graphic novel illustration with bold gritty ink lines and realistic faces, dark night scene with strong high contrast: "
          "cold blue and purple shadows with a bright light source (flashlight, lamp, moon) so it still pops on a phone. "
          f"LEFT 40 percent of the frame: an extreme close-up of {MASCOT}, head and shoulders only, the head huge and "
-         "filling the left side, SHOCKED and SCARED face (wide eyes, raised eyebrows, sweat drops, mouth open in a scream; "
-         "not smiling, not happy). RIGHT 60 percent: a detailed, "
+         "filling the left side, facing us with a TERRIFIED face (wide eyes, raised eyebrows, cold sweat, mouth open in a gasp; "
+         "not smiling, not funny). RIGHT 60 percent: a detailed, "
          "creepy scene set in Indonesia with the ghost or threat clearly visible but not gory (no blood, no wounds). Keep the TOP RIGHT corner fairly calm (sky or wall). Absolutely no text, no letters, no words, no numbers. "
          "Scene: ")
 SYS = """Kamu desainer thumbnail YouTube untuk channel cerita horor POV "Jangan Sendirian" (seri "Bagaimana jika kamu ..."). Tujuan: penonton langsung paham premisnya dalam 1 detik di layar HP dan merinding penasaran, tanpa clickbait palsu: harus sesuai isi cerita.
-Contoh gaya: wajah stickman ketakutan close-up besar di kiri, lorong kos gelap dengan sosok berambut panjang di ujungnya di kanan, teks "JANGAN BUKA JAM 3".
+Contoh gaya: wajah Gitgit (tokoh utama channel) ketakutan close-up besar di kiri, lorong kos gelap dengan sosok berambut panjang di ujungnya di kanan, teks "JANGAN BUKA JAM 3".
 Berikan:
-- "visual": adegan untuk sisi KANAN thumbnail dalam BAHASA INGGRIS (maks 40 kata): momen paling dramatis dari topik, konkret dan ramai, dengan ancaman atau akibat yang terlihat jelas (kerumunan, skala besar, kota atau alam Indonesia bila cocok). Jangan deskripsikan stickman utamanya (sudah otomatis close-up di kiri). Tanpa teks, tanpa tokoh nyata, tanpa darah, luka, atau konten seksual.
+- "visual": adegan untuk sisi KANAN thumbnail dalam BAHASA INGGRIS (maks 40 kata): momen paling dramatis dari topik, konkret dan ramai, dengan ancaman atau akibat yang terlihat jelas (kerumunan, skala besar, kota atau alam Indonesia bila cocok). Jangan deskripsikan tokoh utamanya (sudah otomatis close-up di kiri). Tanpa teks, tanpa tokoh nyata, tanpa darah, luka, atau konten seksual.
 - "hook": 2-4 kata bahasa Indonesia, HURUF BESAR, berupa PREMIS atau ATURAN yang menyeramkan dan konkret (contoh gaya: "JANGAN BUKA JAM 3", "KOS 200 RIBU", "DIA IKUT PULANG"). Jangan kalimat teka-teki yang tak bisa dipahami tanpa judul.
 - "highlight": satu kata dari hook yang diberi warna merah (sisanya kuning).
 Gambar dan hook harus saling cocok: adegan menunjukkan persis apa yang dikatakan hook, bukan kebalikannya.

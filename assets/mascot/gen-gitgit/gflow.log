@@ -1,0 +1,33 @@
+
+gflow image t2i · profile=sjatmiko30 · 4 prompt(s) · up to 4 image(s)
+  output_dir: ~/github-repos/whatif-automation/assets/mascot/gen-gitgit
+                                 gflow-cli t2i                                  
+┏━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ # ┃ prompt                     ┃ ratio ┃ status ┃ detail                     ┃
+┡━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 0 │ Character design reference │ 16:9  │ OK     │ ~/github-repos/whatif-auto │
+│   │ sheet on a plain light     │       │        │ mation/assets/mascot/gen-g │
+│   │ grey ba...                 │       │        │ itgit/prompt_0_0.jpg       │
+│ 1 │ Character design reference │ 16:9  │ FAIL   │ FlowAgentUiError: Google   │
+│   │ sheet on a plain light     │       │        │ Flow Agentic UI detected:  │
+│   │ grey ba...                 │       │        │ agent-only composer: the   │
+│   │                            │       │        │ agent turn ended with no   │
+│   │                            │       │        │ image and no credit gate.  │
+│   │                            │       │        │ Last reply: error          │
+│   │                            │       │        │                            │
+│   │                            │       │        │ Terjadi error. Coba lagi.  │
+│   │                            │       │        │                            │
+│   │                            │       │        │ Coba lagi                  │
+│   │                            │       │        │ thumb_up                   │
+│   │                            │       │        │ thumb_down                 │
+│   │                            │       │        │ content_copy               │
+│   │                            │       │        │ flag                       │
+│ 2 │ Character design reference │ 16:9  │ OK     │ ~/github-repos/whatif-auto │
+│   │ sheet on a plain light     │       │        │ mation/assets/mascot/gen-g │
+│   │ grey ba...                 │       │        │ itgit/prompt_2_0.jpg       │
+│ 3 │ Character design reference │ 16:9  │ OK     │ ~/github-repos/whatif-auto │
+│   │ sheet on a plain light     │       │        │ mation/assets/mascot/gen-g │
+│   │ grey ba...                 │       │        │ itgit/prompt_3_0.jpg       │
+└───┴────────────────────────────┴───────┴────────┴────────────────────────────┘
+
+3/4 succeeded · 1 failure(s) · 0 skipped

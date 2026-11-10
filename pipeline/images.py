@@ -1,4 +1,4 @@
-"""Step 5: one stickman image per scene through gflow. Resumable: existing scene files are skipped."""
+"""Step 5: one image per scene through gflow. Resumable: existing scene files are skipped."""
 import os, re, shutil, sys, random
 from common import *
 

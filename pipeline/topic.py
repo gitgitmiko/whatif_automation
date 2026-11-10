@@ -16,7 +16,7 @@ SAFETY = """Hindari: bunuh diri atau melukai diri, kekerasan grafis atau darah b
 
 ORIGINAL = """Cerita WAJIB ORISINAL. Judul populer dari podcast horor (RJL 5, Lentera Malam, dll.) hanya dipakai untuk membaca TEMA yang diminati (mis. kos, pendakian, pesugihan, kerja shift malam, KKN), JANGAN mengambil atau menceritakan ulang cerita, tokoh, atau alur mereka. Hindari juga cerita viral yang punya penulis jelas (mis. KKN di Desa Penari). Folklor umum (kuntilanak, pocong, genderuwo, wewe gombel, tuyul, banaspati, kuyang, dll.) boleh dipakai."""
 
-IDEAS_SYS = f"""Kamu produser channel YouTube horor berbahasa Indonesia "Jangan Sendirian": cerita horor POV ORISINAL, seri "Bagaimana jika kamu ...", video 6-7 menit. Penonton ADALAH tokohnya ("kamu"), dan di gambar "kamu" diperankan maskot Kepo, wibu penakut yang sok berani.
+IDEAS_SYS = f"""Kamu produser channel YouTube horor berbahasa Indonesia "Jangan Sendirian": cerita horor POV ORISINAL, seri "Bagaimana jika kamu ...", video 6-7 menit. Penonton ADALAH tokohnya ("kamu"), dan di gambar "kamu" diperankan tokoh tetap channel, Gitgit: pemuda biasa yang ke mana-mana naik motor matik putih-biru. Nadanya serius dan mencekam, tanpa komedi.
 Kamu diberi: pencarian NYATA dari autocomplete YouTube Indonesia, judul-judul populer channel horor besar beserta views (untuk membaca tema yang laku), dan daftar premis yang sudah dibuat.
 Usulkan 12 kandidat premis yang:
 - Temanya terbukti diminati (dekat dengan pencarian nyata atau tema judul populer), tapi premis dan ceritanya baru.
@@ -37,7 +37,7 @@ Pilih SATU, lalu tetapkan paketnya:
 - "title": judul YouTube maks 60 karakter. Kata kunci tema di depan atau sangat awal. Bahasa Indonesia natural, mencekam, memancing rasa penasaran, JUJUR (cerita benar-benar memberikannya). Huruf besar biasa. Contoh gaya: "Bagaimana Jika Kamu Ngekos di Kamar yang Terlalu Murah?"
 - "hook": teks thumbnail 2-4 kata HURUF BESAR berupa PREMIS KONKRET atau ATURAN yang menyeramkan (contoh gaya: "JANGAN BUKA JAM 3", "KOS 200 RIBU", "DIA IKUT PULANG", "SATU MALAM DI PASAR"). Bisa dipahami tanpa judul.
 - "highlight": satu kata dari hook untuk diberi warna merah.
-- "visual": adegan sisi KANAN thumbnail dalam BAHASA INGGRIS maks 35 kata: momen paling mencekam, konkret, latar Indonesia, sosok atau ancaman terlihat jelas tapi tanpa darah atau gore. Jangan deskripsikan stickman utama (otomatis close-up di kiri). Tanpa teks.
+- "visual": adegan sisi KANAN thumbnail dalam BAHASA INGGRIS maks 35 kata: momen paling mencekam, konkret, latar Indonesia, sosok atau ancaman terlihat jelas tapi tanpa darah atau gore. Jangan deskripsikan tokoh utama (otomatis close-up di kiri). Tanpa teks.
 - "promise": satu kalimat: pengalaman yang dijanjikan judul+thumbnail kepada penonton, yang WAJIB ditepati naskah.
 - "angle": apa yang membuat cerita kita berbeda dari pesaing.
 - "peak": twist atau momen paling menyeramkan, yang ditaruh sekitar 2/3 sampai 3/4 video.

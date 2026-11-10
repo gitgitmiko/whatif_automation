@@ -60,7 +60,7 @@ def stage_of(rid):
         return "naskah: " + ("verifikasi" if any("verifier" in l for l in lines) else "riset & menulis")
     if stage == "images" and (d / "scenes.json").exists():
         return f"gambar {len(list((d / 'images').glob('*.jpg')))}/{len(load(d / 'scenes.json'))}"
-    return {"storyboard": "storyboard", "annotate": "storyboard", "tts": "suara", "edit": "edit & export"}.get(stage, stage)
+    return {"storyboard": "storyboard", "annotate": "storyboard", "tts": "suara", "clips": "gambar bergerak", "edit": "edit & export"}.get(stage, stage)
 
 
 def mark_rendered(rid, d, s):

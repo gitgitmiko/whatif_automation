@@ -8,7 +8,8 @@ Premis, judul, dan thumbnail sudah ditetapkan dari riset (lihat "paket" di pesan
 Aturan naskah:
 - Panjang {min_words}-{max_words} kata narasi lisan, setara {minutes} menit.
 - Sudut pandang orang kedua: "kamu" mengalami semuanya. Bahasa Indonesia sehari-hari yang natural, kalimat pendek-pendek saat tegang, deskripsi indra yang konkret (bunyi, bau, dingin, bayangan). Latar Indonesia yang terasa nyata (kos, gang, warung, musala, sawah, jalur pendakian, rumah nenek, motor, HP lowbat).
-- "Kamu" di cerita ini diperankan oleh maskot channel, Kepo: seorang wibu penakut yang sok berani (kacamata bulat, ikat kepala putih, hoodie ungu bergambar kucing, tas penuh pin anime). Di gambar, penonton akan melihat Kepo sebagai dirinya. Jadi beri "kamu" kepribadian wibu ini secara halus, 3-6 kali di sepanjang cerita: membandingkan situasi dengan anime atau game horor yang pernah ditonton, menenangkan diri dengan pikiran yang konyol, atau sok berani lalu menyesal. Itu melepas tegang sesaat, tapi JANGAN di momen paling seram. Jangan menyebut nama "Kepo" di narasi; tetap "kamu".
+- "Kamu" di cerita ini diperankan oleh tokoh tetap channel, Gitgit: pemuda Indonesia biasa usia dua puluhan, berambut ikal belah tengah, selalu memakai jam tangan hitam di tangan kiri, dan ke mana-mana naik motor Beat putih-biru miliknya. Di gambar, penonton akan melihat Gitgit sebagai dirinya. Jangan menyebut nama "Gitgit" di narasi; tetap "kamu". Bila cerita melibatkan perjalanan atau kendaraan, pakai motor Beat putih-biru itu; jam tangan hitamnya boleh dipakai untuk melihat waktu. Pakaian "kamu" bebas mengikuti cerita.
+- Nada SERIUS dan mencekam dari awal sampai akhir. TANPA humor, lelucon, pikiran konyol, atau perbandingan dengan anime, game, dan film. Rasa takut "kamu" harus terasa nyata: tubuh yang bereaksi (tengkuk dingin, napas tertahan, tangan gemetar), bukan komentar lucu.
 - Tulis untuk dibacakan dengan menyeramkan: kalimat pendek saat tegang, "..." untuk jeda menahan napas, bunyi digambarkan dengan kata yang terdengar (tok... tok... tok..., krek, sreek).
 - Hindari kata bahasa Inggris bila ada padanan Indonesia yang biasa dipakai (penanak nasi atau magic com, pengisi daya, senter). Bila tetap perlu, pakai seperlunya.
 - 15 DETIK PERTAMA (sekitar 40 kata) langsung masuk ke situasi atau aturan yang menyeramkan dari premis, dalam adegan konkret. Jangan buka dengan "di video ini" atau sapaan channel.
@@ -30,7 +31,7 @@ Periksa:
 1. ORISINALITAS: apakah alur, tokoh, atau twist-nya menjiplak cerita terkenal (podcast RJL 5, Lentera Malam, Nessie Judge, film horor, KKN di Desa Penari, creepypasta terkenal)? Gunakan WebSearch bila ragu. Menjiplak = major. Memakai folklor umum boleh.
 2. KEAMANAN konten YouTube: gore atau detail luka, bunuh diri/melukai diri, konten seksual, anak sebagai korban kekerasan, menjelekkan agama/suku/kelompok, tokoh atau tragedi nyata, menuduh tempat nyata spesifik angker, ritual berbahaya yang bisa ditiru. Pelanggaran = major.
 3. JANJI: apakah cerita menepati judul, hook thumbnail, dan "promise"? Tidak menepati = major.
-4. KUALITAS: pembuka langsung mencekam dalam 15 detik; eskalasi tidak datar; twist/peak ada dan terasa; penutup tidak antiklimaks; POV "kamu" konsisten; sisi wibu "kamu" tidak merusak momen seram; logika cerita tidak bolong parah. Bolong parah atau pembuka/penutup gagal = major; sisanya minor.
+4. KUALITAS: pembuka langsung mencekam dalam 15 detik; eskalasi tidak datar; twist/peak ada dan terasa; penutup tidak antiklimaks; POV "kamu" konsisten; nada serius terjaga (humor, lelucon, atau rujukan anime/game yang memecah ketegangan = major); logika cerita tidak bolong parah. Bolong parah atau pembuka/penutup gagal = major; sisanya minor.
 severity "major" atau "minor". verdict "pass" hanya jika tidak ada issue major.
 
 Balas HANYA JSON:
@@ -47,10 +48,10 @@ def main(slug, topic, minutes=6.5, rounds=6):
     d = run_dir(slug)
     pack = load(d / "plan.json") if (d / "plan.json").exists() else {}
     pack = {k: pack[k] for k in ("title", "query", "hook", "promise", "angle", "peak") if k in pack}
-    # Measured on the horror read (per-scene delivery, its pauses, and the "..." and short sentences of the style):
-    # about 102 words a minute all in. Videos run 5-8 minutes.
-    lo, hi = int(minutes * 95), int(minutes * 110)
-    floor = int(min(5.2, minutes * 0.8) * 100)  # a normal run under this falls short of 5 minutes; short tests scale down
+    # Videos run 5-8 minutes. Gemini's slow horror read runs about 79 words a minute (measured 2026-11-10: 706 words, 538 s; edge-tts Ardi
+    # read about 102), so the word count follows that voice.
+    lo, hi = int(minutes * 74), int(minutes * 86)
+    floor = int(min(5.2, minutes * 0.8) * 79)  # a normal run under this falls short of 5 minutes; short tests scale down
     fmt = dict(min_words=lo, max_words=hi, minutes=minutes)
     if (d / "script.draft.json").exists():
         s = load(d / "script.draft.json")
