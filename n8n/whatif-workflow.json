@@ -1,0 +1,459 @@
+{
+ "id": "whatif-longform",
+ "name": "JANGAN SENDIRIAN — horor POV 5-8 menit (12:00)",
+ "active": true,
+ "nodes": [
+  {
+   "id": "w1",
+   "name": "Jadwal",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "0 12 * * *"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "30 12 * * *"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "0 18 * * *"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "30 18 * * *"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "w2",
+   "name": "Tes manual",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    200
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "w3",
+   "name": "Pengaturan",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    240,
+    100
+   ],
+   "parameters": {
+    "jsCode": "// 12:00/12:30 upload the 'siang' video, 18:00/18:30 the 'sore' one (the :30 run is a retry: it finds nothing if :00 worked).\n// Change privacy to 'unlisted' or 'private' to review videos before they go public.\nconst hour = $now.setZone('Asia/Jakarta').hour;\nreturn [{ json: { slot: hour < 15 ? 'siang' : 'sore', privacy: 'public' } }];"
+   }
+  },
+  {
+   "id": "w4",
+   "name": "Cek video siap",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    480,
+    100
+   ],
+   "parameters": {
+    "url": "=http://172.18.0.1:8798/api/ready?slot={{ $json.slot }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 30000,
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "w5",
+   "name": "Ada video?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    720,
+    100
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "typeValidation": "loose"
+     },
+     "combinator": "and",
+     "conditions": [
+      {
+       "id": "c1",
+       "leftValue": "={{ $json.statusCode }}",
+       "rightValue": 200,
+       "operator": {
+        "type": "number",
+        "operation": "equals"
+       }
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "w6",
+   "name": "Ambil video",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    960,
+    0
+   ],
+   "parameters": {
+    "url": "={{ $json.body.video_url }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 600000,
+     "response": {
+      "response": {
+       "responseFormat": "file",
+       "outputPropertyName": "data"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "w7",
+   "name": "Upload YouTube",
+   "type": "n8n-nodes-base.youTube",
+   "typeVersion": 1,
+   "position": [
+    1200,
+    0
+   ],
+   "parameters": {
+    "resource": "video",
+    "operation": "upload",
+    "title": "={{ $('Cek video siap').item.json.body.title }}",
+    "regionCode": "ID",
+    "categoryId": "27",
+    "binaryProperty": "data",
+    "options": {
+     "description": "={{ $('Cek video siap').item.json.body.description }}",
+     "tags": "={{ $('Cek video siap').item.json.body.tags.join(',') }}",
+     "privacyStatus": "={{ $('Pengaturan').item.json.privacy }}",
+     "defaultLanguage": "id",
+     "selfDeclaredMadeForKids": false,
+     "notifySubscribers": true
+    }
+   },
+   "onError": "continueErrorOutput",
+   "credentials": {
+    "youTubeOAuth2Api": {
+     "id": "jangansendirian-youtube",
+     "name": "YouTube Jangan Sendirian"
+    }
+   }
+  },
+  {
+   "id": "w8",
+   "name": "Tandai terupload",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1440,
+    -100
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "=http://172.18.0.1:8798/api/videos/{{ $('Cek video siap').item.json.body.id }}/uploaded",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ youtube_id: $json.uploadId ?? $json.id }) }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "w9",
+   "name": "Tandai gagal",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1440,
+    100
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "=http://172.18.0.1:8798/api/videos/{{ $('Cek video siap').item.json.body.id }}/failed",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ error: $json.error?.message ?? String($json.error ?? 'upload failed') }) }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "w10",
+   "name": "Ada thumbnail?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1680,
+    -100
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "typeValidation": "loose"
+     },
+     "combinator": "and",
+     "conditions": [
+      {
+       "id": "c2",
+       "leftValue": "={{ $('Cek video siap').item.json.body.thumbnail_url }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEmpty",
+        "singleValue": true
+       }
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "w11",
+   "name": "Ambil thumbnail",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1920,
+    -200
+   ],
+   "parameters": {
+    "url": "={{ $('Cek video siap').item.json.body.thumbnail_url }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 60000,
+     "response": {
+      "response": {
+       "responseFormat": "file",
+       "outputPropertyName": "data"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "w12",
+   "name": "Pasang thumbnail",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2160,
+    -200
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('Upload YouTube').item.json.uploadId ?? $('Upload YouTube').item.json.id }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "youTubeOAuth2Api",
+    "sendBody": true,
+    "contentType": "binaryData",
+    "inputDataFieldName": "data",
+    "options": {}
+   },
+   "onError": "continueRegularOutput",
+   "credentials": {
+    "youTubeOAuth2Api": {
+     "id": "jangansendirian-youtube",
+     "name": "YouTube Jangan Sendirian"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Jadwal": {
+   "main": [
+    [
+     {
+      "node": "Pengaturan",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tes manual": {
+   "main": [
+    [
+     {
+      "node": "Pengaturan",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pengaturan": {
+   "main": [
+    [
+     {
+      "node": "Cek video siap",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Cek video siap": {
+   "main": [
+    [
+     {
+      "node": "Ada video?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ada video?": {
+   "main": [
+    [
+     {
+      "node": "Ambil video",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Ambil video": {
+   "main": [
+    [
+     {
+      "node": "Upload YouTube",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Upload YouTube": {
+   "main": [
+    [
+     {
+      "node": "Tandai terupload",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Tandai gagal",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tandai terupload": {
+   "main": [
+    [
+     {
+      "node": "Ada thumbnail?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ada thumbnail?": {
+   "main": [
+    [
+     {
+      "node": "Ambil thumbnail",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Ambil thumbnail": {
+   "main": [
+    [
+     {
+      "node": "Pasang thumbnail",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Jakarta",
+  "saveManualExecutions": true
+ }
+}
