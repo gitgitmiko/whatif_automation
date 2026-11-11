@@ -1,30 +1,53 @@
-"""Step 5b: a YouTube thumbnail that hooks: Sonnet picks a dramatic picture and a 2-4 word hook, gflow draws the
-picture, and the hook is set over it in a thick comic face with one word in yellow."""
+"""Step 5b: a YouTube thumbnail that hooks: the hero's official render on the left, a scene from its lore drawn by gflow
+on the right, and a 2-4 word hook set over it in a thick comic face with one word in red."""
 import shutil, sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from common import *
 from images import gflow
 
 FONT = ROOT / "assets" / "fonts" / "Bangers-Regular.ttf"
-# Channel mascot: the same face in every thumbnail, so viewers learn to spot the channel in their feed.
-MASCOT = ("Gitgit, the channel's main character: a young Indonesian man in his twenties with warm tan skin, thick CURLY wavy "
-          "black hair parted exactly in the MIDDLE with curls falling to both sides of the forehead, and exactly one small "
-          "dark MOLE on the cheek on the LEFT side of the picture, just below that eye and close to the nose")
-STYLE = ("YouTube thumbnail for a horror story, dark horror graphic novel illustration with bold gritty ink lines and realistic faces, dark night scene with strong high contrast: "
-         "cold blue and purple shadows with a bright light source (flashlight, lamp, moon) so it still pops on a phone. "
-         f"LEFT 40 percent of the frame: an extreme close-up of {MASCOT}, head and shoulders only, the head huge and "
-         "filling the left side, facing us with a TERRIFIED face (wide eyes, raised eyebrows, cold sweat, mouth open in a gasp; "
-         "not smiling, not funny). RIGHT 60 percent: a detailed, "
-         "creepy scene set in Indonesia with the ghost or threat clearly visible but not gory (no blood, no wounds). Keep the TOP RIGHT corner fairly calm (sky or wall). Absolutely no text, no letters, no words, no numbers. "
-         "Scene: ")
-SYS = """Kamu desainer thumbnail YouTube untuk channel cerita horor POV "Jangan Sendirian" (seri "Bagaimana jika kamu ..."). Tujuan: penonton langsung paham premisnya dalam 1 detik di layar HP dan merinding penasaran, tanpa clickbait palsu: harus sesuai isi cerita.
-Contoh gaya: wajah Gitgit (tokoh utama channel) ketakutan close-up besar di kiri, lorong kos gelap dengan sosok berambut panjang di ujungnya di kanan, teks "JANGAN BUKA JAM 3".
-Berikan:
-- "visual": adegan untuk sisi KANAN thumbnail dalam BAHASA INGGRIS (maks 40 kata): momen paling dramatis dari topik, konkret dan ramai, dengan ancaman atau akibat yang terlihat jelas (kerumunan, skala besar, kota atau alam Indonesia bila cocok). Jangan deskripsikan tokoh utamanya (sudah otomatis close-up di kiri). Tanpa teks, tanpa tokoh nyata, tanpa darah, luka, atau konten seksual.
-- "hook": 2-4 kata bahasa Indonesia, HURUF BESAR, berupa PREMIS atau ATURAN yang menyeramkan dan konkret (contoh gaya: "JANGAN BUKA JAM 3", "KOS 200 RIBU", "DIA IKUT PULANG"). Jangan kalimat teka-teki yang tak bisa dipahami tanpa judul.
+# The hero's official art (a cut-out render, or the splash art framed as a panel) stands on the left, so viewers see at once whose lore this is; the AI only
+# draws the world behind it.
+STYLE = ("YouTube thumbnail background for a game hero lore video, dark fantasy graphic novel illustration with bold ink "
+         "lines, dramatic high contrast lighting with one bright light source so it pops on a phone. The LEFT 40 percent "
+         "of the frame is open ground and sky with no figure (a hero render is placed there later). RIGHT 60 percent: a "
+         "detailed, dramatic scene from the hero's world. No characters' faces, no blood, no gore. Keep the TOP RIGHT "
+         "corner fairly calm (sky or wall). Absolutely no text, no letters, no words, no numbers, no logos. Scene: ")
+SYS = """Kamu desainer thumbnail YouTube untuk channel lore hero game "Hikayat Ancient". Tujuan: penonton langsung tahu hero siapa dan penasaran dengan kisahnya dalam 1 detik di layar HP, tanpa clickbait palsu.
+Potret resmi hero otomatis ada di kiri. Berikan:
+- "visual": latar sisi KANAN dalam BAHASA INGGRIS (maks 40 kata): tempat atau momen paling kuat dari lore, tanpa menggambar heronya. Tanpa teks.
+- "hook": 2-4 kata bahasa Indonesia, HURUF BESAR, konkret dan sesuai lore (contoh gaya: "DIA TAK BISA MATI", "JAGAL MEDAN PERANG").
 - "highlight": satu kata dari hook yang diberi warna merah (sisanya kuning).
-Gambar dan hook harus saling cocok: adegan menunjukkan persis apa yang dikatakan hook, bukan kebalikannya.
 Balas HANYA JSON: {"visual":"...","hook":"...","highlight":"..."}"""
+
+
+def with_hero(picture, render, out):
+    """The official render on the left of the picture, tall, with a dark glow so it stands off the background."""
+    W, H = 1280, 720
+    img = Image.open(picture).convert("RGB")
+    s = max(W / img.width, H / img.height)
+    img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
+    img = img.crop(((img.width - W) // 2, (img.height - H) // 2, (img.width - W) // 2 + W, (img.height - H) // 2 + H))
+    hero = Image.open(render).convert("RGBA")
+    if hero.getextrema()[3][0] == 255:  # no transparency: a splash picture, shown as a framed panel
+        k = H * 0.86 / hero.height
+        panel = hero.resize((round(hero.width * k), round(hero.height * k)), Image.LANCZOS)
+        side = min(panel.width, int(W * 0.40))
+        panel = panel.crop(((panel.width - side) // 2, 0, (panel.width - side) // 2 + side, panel.height))
+        framed = Image.new("RGBA", (panel.width + 16, panel.height + 16), (12, 12, 16, 255))
+        framed.paste(panel, (8, 8))
+        hero = framed
+    hero = hero.crop(hero.getbbox())
+    k = min(H * 1.02 / hero.height, W * 0.52 / hero.width)
+    hero = hero.resize((round(hero.width * k), round(hero.height * k)), Image.LANCZOS)
+    x, y = max(int(W * 0.24) - hero.width // 2, -20), H - hero.height + 10
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    glow.paste((0, 0, 0, 200), (x, y), hero.getchannel("A"))
+    glow = glow.filter(ImageFilter.GaussianBlur(18))
+    base = img.convert("RGBA")
+    base.alpha_composite(glow)
+    base.alpha_composite(hero, (x, y))
+    base.convert("RGB").save(out, "JPEG", quality=95)
 
 
 def fit_lines(draw, words, font_path, box_w, max_lines=2, start=210):
@@ -94,7 +117,14 @@ def main(slug, fresh=False):
         sys.exit("gflow made no thumbnail picture: " + (r.stdout + r.stderr)[-500:])
     shutil.move(pics[0], d / "thumbnail-picture.jpg")
     shutil.rmtree(tmp, ignore_errors=True)
-    compose(d / "thumbnail-picture.jpg", idea["hook"], idea.get("highlight", ""), d / "thumbnail.jpg")
+    folder = (load(d / "plan.json") if (d / "plan.json").exists() else {}).get("hero_dir")
+    info = load(ROOT / folder / "hero.json") if folder and (ROOT / folder / "hero.json").exists() else {}
+    render = ROOT / str(folder) / info.get("reveal", "render.png")
+    picture = d / "thumbnail-picture.jpg"
+    if render.exists():
+        with_hero(picture, render, d / "thumbnail-hero.jpg")
+        picture = d / "thumbnail-hero.jpg"
+    compose(picture, idea["hook"], idea.get("highlight", ""), d / "thumbnail.jpg")
     save(d / "thumbnail.json", idea)
     log("thumbnail written")
 

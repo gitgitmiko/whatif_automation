@@ -12,8 +12,8 @@ SECONDS = 4
 # A clip is played a little slower to fill its scene, so scenes much longer than this end on its last frame.
 MIN_SCENE, MAX_SCENE = 3.0, 9.0
 
-SYS = """Kamu sutradara animasi untuk video cerita horor bergaya novel grafis. Video ini dibagi per menit; untuk SETIAP menit pilih SATU adegan dari kandidatnya yang paling hidup bila gambarnya dibuat bergerak 4 detik: ada sosok yang bisa menoleh atau mendekat, api atau lampu berkedip, hujan, kabut, kain atau rambut tertiup, pintu terbuka pelan, tokoh yang bereaksi. Utamakan momen yang mencekam.
-Lalu tulis "motion": gerakan yang terjadi dalam 4 detik itu, dalam BAHASA INGGRIS, maks 35 kata, konkret dan pelan (horor terasa dari gerak kecil yang salah). Hanya gerakan dari isi gambar yang dideskripsikan; jangan tambah tokoh atau benda baru, jangan ganti lokasi, jangan potong ke adegan lain, tanpa teks. Kamera boleh bergerak pelan (slow push in, slight drift).
+SYS = """Kamu sutradara animasi untuk video lore hero game bergaya novel grafis fantasi. Video ini dibagi per menit; untuk SETIAP menit pilih SATU adegan dari kandidatnya yang paling hidup bila gambarnya dibuat bergerak 4 detik: siluet yang melangkah atau berbalik, senjata atau sihir yang menyala, api, petir, hujan, kabut, jubah atau panji tertiup, pasukan bergerak, tokoh yang bereaksi. Utamakan momen paling kuat dari kisahnya.
+Lalu tulis "motion": gerakan yang terjadi dalam 4 detik itu, dalam BAHASA INGGRIS, maks 35 kata, konkret dan sinematik. Hanya gerakan dari isi gambar yang dideskripsikan; jangan tambah tokoh atau benda baru, jangan ganti lokasi, jangan potong ke adegan lain, tanpa teks. Kamera boleh bergerak pelan (slow push in, slight drift).
 Balas HANYA JSON: {"clips":[{"minute":0,"i":12,"motion":"..."}]} dengan satu entri untuk setiap menit."""
 
 
@@ -32,7 +32,7 @@ def plan(scenes):
     windows = {}
     for k in range(n):
         cands = [x for x in scenes if k * width <= x["start"] < (k + 1) * width
-                 and MIN_SCENE <= x["end"] - x["start"] <= MAX_SCENE]
+                 and MIN_SCENE <= x["end"] - x["start"] <= MAX_SCENE and not x.get("reveal")]
         if cands:
             windows[k] = cands
     ask = {str(k): [{"i": x["i"], "narasi": x["text"], "gambar": x["visual"]} for x in c] for k, c in windows.items()}

@@ -2,12 +2,12 @@
 import sys
 from common import *
 
-SYS = """Kamu editor video YouTube cerita horor. Dari potongan narasi berikut, pilih momen yang layak ditonjolkan di subtitle dengan warna: aturan yang harus dipatuhi, bunyi atau sosok yang muncul, momen kaget, petunjuk penting, atau kalimat yang bikin merinding. Patokan: sekitar seperempat potongan, menyebar sepanjang video, tidak berurutan terus-menerus.
-"phrase" adalah 1-4 kata PERSIS berurutan dari narasi potongan itu. "mood" salah satu: bahaya (sosok, ancaman, momen kaget), tanya (misteri, bunyi aneh, pertanyaan), fakta (aturan, jam, petunjuk penting), positif (lega, selamat), ajaib (hal gaib yang aneh tapi tidak mengancam).
+SYS = """Kamu editor video YouTube lore hero game. Dari potongan narasi berikut, pilih momen yang layak ditonjolkan di subtitle dengan warna: nama hero, tempat, atau skill, kekuatan atau ancaman, momen penting dalam kisahnya, misteri, atau fakta DotA 1 yang menarik. Patokan: sekitar seperempat potongan, menyebar sepanjang video, tidak berurutan terus-menerus.
+"phrase" adalah 1-4 kata PERSIS berurutan dari narasi potongan itu. "mood" salah satu: bahaya (ancaman, kematian, kutukan, pertempuran), tanya (misteri, pertanyaan yang belum terjawab), fakta (nama, tempat, skill, fakta DotA 1), positif (kemenangan, harapan, kebaikan), ajaib (sihir dan kekuatan gaib).
 Balas HANYA JSON: {"highlights":[{"i":0,"phrase":"...","mood":"fakta"}]}"""
 MOODS = {"fakta", "bahaya", "positif", "ajaib", "tanya"}
 
-VOICE_SYS = """Kamu sutradara pengisi suara untuk cerita horor yang dibacakan narator. Narator membaca potongan demi potongan; untuk SETIAP potongan tentukan cara membacanya agar cerita terasa hidup dan menyeramkan, tidak datar:
+VOICE_SYS = """Kamu sutradara pengisi suara untuk video lore hero game yang dibacakan narator seperti dokumenter. Narator membaca potongan demi potongan; untuk SETIAP potongan tentukan cara membacanya agar cerita terasa hidup dan tidak datar, mengikuti suasana kisahnya (tidak semua harus seram):
 - "delivery" salah satu: normal (bercerita biasa, suasana masih aman), tegang (ketegangan naik, ada yang terasa salah), bisik (hening, bunyi kecil, sesuatu sangat dekat, menahan napas), dingin (fakta yang mengerikan, aturan, kalimat penutup yang bikin merinding: pelan dan berat), kaget (momen kejut, sosok muncul tiba-tiba: lebih cepat dan keras), lega (ketegangan turun sesaat, napas lega).
 - Ikuti alur: awal lebih banyak normal, makin ke puncak makin banyak tegang/bisik, kaget hanya di momen kejut yang sungguh penting (maksimal sekitar 5 kali), dingin untuk kalimat yang harus menancap. Jangan semua potongan sama.
 - "pause": jeda hening SETELAH potongan itu dalam detik (0.1 sampai 1.5). Pendek (0.1-0.3) saat cerita mengalir; panjang (0.7-1.5) sebelum momen kejut, setelah kalimat yang mengerikan, atau saat bunyi aneh terdengar, agar penonton ikut menahan napas.

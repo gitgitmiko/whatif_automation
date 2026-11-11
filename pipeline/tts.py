@@ -1,6 +1,6 @@
-"""Step 4: narration.mp3 and narration.srt. The voice is Gemini TTS (Charon), read a few scenes per request so the
-telling flows; faster-whisper then times every word, which gives the scene times and the captions. If Gemini cannot
-be used (no key, quota, a bad take that will not go away), the whole narration falls back to edge-tts."""
+"""Step 4: narration.mp3 and narration.srt from edge-tts (Microsoft, voice Ardi); its word timings give scene times and
+captions. A Gemini TTS voice (Charon, timed by faster-whisper) is kept behind TTS_VOICE=gemini in .env: it is more
+expressive, but the free tier allows only 10 requests a day and whisper's rough timings made lines start early."""
 import asyncio, base64, re, sys, urllib.error, urllib.request, wave
 import edge_tts
 import numpy as np
@@ -42,8 +42,8 @@ GEMINI_TAG = {"normal": "", "tegang": "[tense]", "bisik": "[whispering]", "dingi
 BATCH_CHARS = 1800  # about two minutes of speech per request: 4-5 requests a story, retries included
 WHISPER = "small"
 # The same closing line on every video, read in the narrator's voice; the end card times its buttons to it.
-OUTRO = ("Kalau kamu masih berani, like, subscribe, dan nyalakan loncengnya, "
-         "supaya tidak ketinggalan cerita berikutnya. Dan ingat... malam ini, jangan sendirian.")
+OUTRO = ("Kalau kamu suka kisah ini, like, subscribe, dan nyalakan loncengnya, "
+         "supaya tidak ketinggalan lore hero berikutnya. Sampai jumpa di Hikayat Ancient.")
 ALNUM = re.compile(r"[^\w]", re.U)
 
 
@@ -109,9 +109,14 @@ def cues(words, max_chars=32, max_words=6, gap=0.5):
         if w["w"][-1] in ".?!" or (w["w"][-1] in ",;:" and len(cur) >= 3):
             flush()
     flush()
-    for a, b in zip(out, out[1:]):  # hold through short pauses instead of flickering
-        if b["start"] - a["end"] < 0.35:
+    # Whisper's word times can overlap a little; captions must not, and none may be empty.
+    for a, b in zip(out, out[1:]):
+        b["start"] = max(b["start"], a["start"] + 0.2)
+        b["end"] = max(b["end"], b["start"] + 0.2)
+        if b["start"] - a["end"] < 0.35:  # hold through short pauses instead of flickering
             a["end"] = b["start"]
+    if out:
+        out[0]["end"] = max(out[0]["end"], out[0]["start"] + 0.2)
     return out
 
 
@@ -185,6 +190,69 @@ def take(text, written, f, tries=3):
     raise RuntimeError(f"no clean Gemini take for {f.name} in {tries} tries")
 
 
+def quietest(raw, lo, hi):
+    """The quietest 40 ms in raw (24 kHz s16) between lo and hi seconds: where a take can be cut between two lines."""
+    a = np.frombuffer(raw, np.int16).astype(np.float32)
+    lo, hi = max(int(lo * SR), 0), min(int(hi * SR), len(a))
+    win, step = int(0.04 * SR), int(0.01 * SR)
+    if hi - lo <= win:
+        return (lo + hi) / 2 / SR
+    e = [float(np.mean(a[i:i + win] ** 2)) for i in range(lo, hi - win, step)]
+    return (lo + int(np.argmin(e)) * step + win / 2) / SR
+
+
+def quiet_points(raw, lo, hi, n=6):
+    """Up to n candidate cut points between lo and hi seconds: the quietest local dips, quietest first."""
+    a = np.frombuffer(raw, np.int16).astype(np.float32)
+    lo, hi = max(int(lo * SR), 0), min(int(hi * SR), len(a))
+    win, step = int(0.04 * SR), int(0.01 * SR)
+    if hi - lo <= win:
+        return [(lo + hi) / 2 / SR]
+    e = np.array([float(np.mean(a[i:i + win] ** 2)) for i in range(lo, hi - win, step)])
+    dips = [i for i in range(len(e)) if e[i] <= e[max(i - 5, 0):i + 6].min()]
+    dips.sort(key=lambda i: e[i])
+    picked = []
+    for i in dips:  # spread out: one per 0.15 s
+        if all(abs(i - j) >= 15 for j in picked):
+            picked.append(i)
+        if len(picked) == n:
+            break
+    return [(lo + i * step + win / 2) / SR for i in picked]
+
+
+def sounds_like(raw, t0, t1):
+    """Letters whisper hears in raw between t0 and t1 seconds (no word times needed)."""
+    a = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
+    a = a[max(int(t0 * SR), 0):max(int(t1 * SR), 0)]
+    if len(a) < SR // 5:
+        return ""
+    a16 = np.interp(np.arange(0, len(a), SR / 16000), np.arange(len(a)), a).astype(np.float32)
+    segs, _ = _whisper.transcribe(a16, language="id", condition_on_previous_text=False, beam_size=1)
+    return alnum(" ".join(x.text for x in segs).lower())
+
+
+def best_cut(raw, cands, before, after):
+    """The candidate cut where the audio just before it ends like `before` and just after starts like `after`."""
+    import difflib
+    def sim(x, y):
+        return difflib.SequenceMatcher(None, x, y).ratio() if x and y else 0.0
+    tail, head = alnum(before.lower())[-12:], alnum(after.lower())[:12]
+    scored = []
+    for rank, c in enumerate(cands):
+        score = sim(sounds_like(raw, c - 1.6, c)[-12:], tail) + sim(sounds_like(raw, c, c + 1.6)[:12], head)
+        scored.append((score - rank * 0.01, c))  # a tie goes to the quieter point
+    return max(scored)[1]
+
+
+def onset(piece):
+    """Seconds into a piece (24 kHz s16) where the voice first rises above a whisper."""
+    x = np.frombuffer(piece, np.int16).astype(np.float32)
+    win = int(0.02 * SR)
+    e = np.sqrt(np.array([np.mean(x[i:i + win] ** 2) for i in range(0, max(len(x) - win, 1), win)]))
+    loud = np.flatnonzero(e > max(np.percentile(e, 90) * 0.15, 1.0))
+    return max(float(loud[0]) * 0.02 - 0.03, 0.0) if len(loud) else 0.0
+
+
 def narrate_gemini(scenes, d):
     """A few scenes per Gemini take, each take timed by whisper and cut at the scene breaks, so every scene still
     gets its own pause after it. Returns word timings over the joined narration.mp3."""
@@ -204,14 +272,32 @@ def narrate_gemini(scenes, d):
             n = len(x["text"].split())
             mine = timed[at:at + n]
             at += n
-            # Cut halfway into the silence on each side, so no word loses its tail.
-            a = max(mine[0]["s"] - 0.05, 0.0) if k == 0 else (timed[at - n - 1]["e"] + mine[0]["s"]) / 2
+            # Whisper's word times are rough and often overlap across a scene break (the last word "ends" after the
+            # next one starts), so a cut halfway between them landed inside a word and the next scene's first
+            # syllables played before its pause. Cut instead at the quietest moment of the audio near the break.
+            if k == 0:
+                a = max(mine[0]["s"] - 0.05, 0.0)
+            else:
+                a = cut
             nxt = timed[at]["s"] if at < len(timed) else None
-            z = min(mine[-1]["e"] + 0.15, end_all) if nxt is None else (mine[-1]["e"] + nxt) / 2
-            for w in mine:
-                words.append({"w": w["w"], "s": w["s"] - a + t, "e": w["e"] - a + t})
+            if nxt is None:
+                z = min(mine[-1]["e"] + 0.15, end_all)
+            else:
+                # How late whisper's times run differs from take to take, so no fixed rule finds the break (the
+                # quietest point near it is often the pause after a short opening like "Malam ketiga."). Try the
+                # quiet dips around it and keep the one where the audio on each side sounds like its own scene.
+                lo, hi = min(mine[-1]["e"], nxt) - 1.4, max(mine[-1]["e"], nxt) + 0.6
+                cands = quiet_points(raw, max(lo, a + 0.2), min(hi, end_all))
+                z = cut = best_cut(raw, cands, x["text"], group[k + 1]["text"])
             piece = raw[int(a * SR) * 2:int(z * SR) * 2]
-            gap = (nxt - mine[-1]["e"]) if nxt is not None else 0.15
+            # Whisper also starts words late, about 0.4 s here; anchor the scene's first word on where its voice
+            # really begins, and move the scene's other words by the same amount.
+            shift = onset(piece) - (mine[0]["s"] - a)
+            for w in mine:
+                ws = min(max(w["s"] + shift, a), z)
+                we = min(max(w["e"] + shift, ws), z)
+                words.append({"w": w["w"], "s": ws - a + t, "e": we - a + t})
+            gap = 0.0  # the cut leaves at most a sliver of the voice's own silence
             pause = min(max(float(x.get("pause") or 0.15), 0.0), 1.6)
             extra = max(pause - gap, 0.0)  # the voice's own silence counts towards the pause the scene asked for
             audio += piece + bytes(int(extra * SR) * 2)
@@ -280,14 +366,14 @@ def main(slug):
     s, scenes = load(d / "script.json"), load(d / "scenes.json")
     global voice, model, styled
     words = None
-    for model, styled in (GEMINI_MODELS if ENV.get("GEMINI_API_KEY") else []):
+    for model, styled in (GEMINI_MODELS if ENV.get("TTS_VOICE") == "gemini" and ENV.get("GEMINI_API_KEY") else []):
         try:
             words = narrate_gemini(scenes, d)
             voice = f"gemini {model} {GEMINI_VOICE}"
             break
         except Exception as e:  # noqa: BLE001 - quota, network or bad takes: the video still gets a voice
             log(f"{model} failed:", str(e)[:400])
-    if words is None:
+    if words is None and ENV.get("TTS_VOICE") == "gemini":
         log("no Gemini voice; edge-tts reads the story")
     if words is None:
         words = narrate(scenes, d)

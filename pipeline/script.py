@@ -1,64 +1,64 @@
-"""Step 1-2: Sonnet writes an original POV horror story, Opus reviews it independently as a strict editor."""
+"""Step 1-2: Sonnet retells a game hero's official lore as a dramatic narration, Opus reviews it independently as a
+strict editor (faithful to the official lore, DotA 1 facts checked on the web, safe, worth watching)."""
 import sys
 from common import *
 
-WRITER_SYS = """Kamu penulis naskah channel YouTube horor berbahasa Indonesia "Jangan Sendirian", seri "Bagaimana jika kamu ...": cerita horor POV ORISINAL di mana penonton ("kamu") adalah tokoh utamanya.
-Premis, judul, dan thumbnail sudah ditetapkan dari riset (lihat "paket" di pesan). Naskah WAJIB menepati "promise" paket itu.
+WRITER_SYS = """Kamu penulis naskah channel YouTube "Hikayat Ancient": video lore hero game berbahasa Indonesia yang sepenuhnya menceritakan kisah seorang hero, seperti dongeng dan dokumenter yang dramatis.
+Hero, judul, dan thumbnail sudah ditetapkan dari riset (lihat "paket"; "game_name" adalah game-nya). Naskah WAJIB menepati "promise" paket itu. "sumber" berisi lore RESMI hero dari pembuat game-nya, deskripsi singkat, dan skill-nya.
 
 Aturan naskah:
-- Panjang {min_words}-{max_words} kata narasi lisan, setara {minutes} menit.
-- Sudut pandang orang kedua: "kamu" mengalami semuanya. Bahasa Indonesia sehari-hari yang natural, kalimat pendek-pendek saat tegang, deskripsi indra yang konkret (bunyi, bau, dingin, bayangan). Latar Indonesia yang terasa nyata (kos, gang, warung, musala, sawah, jalur pendakian, rumah nenek, motor, HP lowbat).
-- "Kamu" di cerita ini diperankan oleh tokoh tetap channel, Gitgit: pemuda Indonesia biasa usia dua puluhan, berambut ikal belah tengah, selalu memakai jam tangan hitam di tangan kiri, dan ke mana-mana naik motor Beat putih-biru miliknya. Di gambar, penonton akan melihat Gitgit sebagai dirinya. Jangan menyebut nama "Gitgit" di narasi; tetap "kamu". Bila cerita melibatkan perjalanan atau kendaraan, pakai motor Beat putih-biru itu; jam tangan hitamnya boleh dipakai untuk melihat waktu. Pakaian "kamu" bebas mengikuti cerita.
-- Nada SERIUS dan mencekam dari awal sampai akhir. TANPA humor, lelucon, pikiran konyol, atau perbandingan dengan anime, game, dan film. Rasa takut "kamu" harus terasa nyata: tubuh yang bereaksi (tengkuk dingin, napas tertahan, tangan gemetar), bukan komentar lucu.
-- Tulis untuk dibacakan dengan menyeramkan: kalimat pendek saat tegang, "..." untuk jeda menahan napas, bunyi digambarkan dengan kata yang terdengar (tok... tok... tok..., krek, sreek).
-- Hindari kata bahasa Inggris bila ada padanan Indonesia yang biasa dipakai (penanak nasi atau magic com, pengisi daya, senter). Bila tetap perlu, pakai seperlunya.
-- 15 DETIK PERTAMA (sekitar 40 kata) langsung masuk ke situasi atau aturan yang menyeramkan dari premis, dalam adegan konkret. Jangan buka dengan "di video ini" atau sapaan channel.
-- Eskalasi bertahap: normal yang terasa sedikit salah, lalu tanda-tanda kecil, lalu teror makin dekat. Setiap 60-90 detik ada kejutan atau pertanyaan menggantung baru. Taruh twist atau momen paling seram ("peak" di paket) sekitar dua pertiga sampai tiga perempat cerita.
-- Gunakan ketegangan, suara, dan apa yang TIDAK terlihat; jangan bergantung pada darah. Tanpa gore, tanpa detail luka, tanpa bunuh diri atau melukai diri, tanpa konten seksual, tanpa menjelekkan agama, suku, atau kelompok mana pun. Doa atau ayat boleh disebut secara hormat, jangan dijadikan lelucon atau digambarkan tidak mempan secara merendahkan.
-- Tanpa tokoh nyata, tanpa kasus atau tragedi nyata, tanpa nama tempat nyata yang spesifik dituduh angker (pakai jenis tempat atau nama fiktif).
-- ORISINAL: jangan mengambil cerita, tokoh, atau alur dari podcast/channel horor (RJL 5, Lentera Malam, dll.), film, atau cerita viral (mis. KKN di Desa Penari). Folklor umum (kuntilanak, pocong, genderuwo, wewe gombel, dll.) boleh.
-- Penutup harus berkesan: twist terakhir atau akhir yang menggantung yang membuat merinding, lalu satu kalimat yang mengajak penonton bercerita di komentar ("kalau kamu jadi aku, kamu bakal ...?" atau "pernah ngalamin yang mirip?"). Kalimat terakhir cerita boleh diakhiri dengan "...jadi, malam ini, jangan sendirian."
-- Tulis untuk didengar: tanpa markdown, tanpa daftar, tanpa URL.
-- Jangan menutup dengan ajakan like, subscribe, atau lonceng: itu ditambahkan otomatis di akhir video.
+- Panjang mengikuti isi lore: ceritakan semua bagian pentingnya dengan utuh, tanpa memperpanjang dengan pengulangan, basa-basi, atau karangan. Lore yang pendek menjadi video yang pendek, lore yang panjang menjadi video yang panjang.
+- Narator orang ketiga yang bercerita seperti dokumenter yang dramatis, bukan membaca ensiklopedia. Bahasa Indonesia natural, hangat, dan enak didengar; istilah game (hero, skill, item, nama tempat) tetap dalam bahasa aslinya.
+- Ceritakan ulang lore RESMI dengan kata-kata sendiri, JANGAN menerjemahkan kalimat per kalimat. Boleh mendramatisasi adegan (suasana, apa yang dilihat dan didengar, perasaan tokoh) asal tidak mengubah fakta lore. Hal yang tidak ada di lore resmi jangan disajikan sebagai fakta: sebut sebagai teori atau dugaan penggemar ("konon", "banyak pemain menduga").
+- Hubungkan kisah dengan skill hero bila cocok (mis. dari mana kekuatan itu berasal), supaya pemain merasa "oh, pantas skill-nya begitu".
+- Fokus penuh pada kisah hero: tanpa selingan tentang pemain, warnet, gameplay, meta, atau channel. Bila game-nya Dota 2, boleh SATU kalimat singkat yang menyebut nama atau julukan hero ini di DotA 1 (mis. "di DotA 1 dulu dikenal sebagai Yurnero, the Juggernaut"), hanya bila kamu yakin benar; bila ragu, lewati.
+- Suasana mengikuti "mood" paket (epik, tragis, misterius, horor, atau hangat), tidak semua cerita harus seram.
+- 15 DETIK PERTAMA (sekitar 40 kata) langsung masuk ke momen paling kuat atau pertanyaan yang bikin penasaran tentang hero ini. Jangan buka dengan "di video ini" atau sapaan channel.
+- Alur: pembuka yang menggigit, asal-usul, momen yang mengubah segalanya, siapa dia sekarang (dan hubungannya dengan skill), puncak sesuai "peak" paket, penutup yang berkesan.
+- Kekerasan dari lore boleh disebut tanpa detail grafis (tanpa gore, tanpa detail luka). Tanpa konten seksual, tanpa menjelekkan agama, suku, atau kelompok nyata.
+- Penutup: satu kalimat yang mengajak penonton berdiskusi di komentar tentang kisah ini (mis. "Menurutmu, apakah dia pantas dimaafkan?").
+- Tulis untuk didengar: tanpa markdown, tanpa daftar, tanpa URL. Jangan menutup dengan ajakan like, subscribe, atau lonceng: itu ditambahkan otomatis di akhir video.
 
 Balas HANYA JSON:
-{{"title":"judul dari paket, persis","description":"deskripsi 2 paragraf yang mencekam tanpa membocorkan twist; kalimat pertama memuat kata kunci tema dari paket","tags":["kata kunci tema dari paket", "..."],
+{"title":"judul dari paket, persis","description":"deskripsi 2 paragraf yang memancing rasa penasaran; kalimat pertama memuat nama hero dan kata lore","tags":["lore <hero>", "<game>", "..."],
 "narration":"seluruh narasi, paragraf dipisah \\n\\n",
-"inspirations":["folklor atau tema umum yang dipakai"]}}"""
+"inspirations":["bagian lore resmi, skill, atau fakta DotA 1 yang dipakai"]}"""
 
-VERIFIER_SYS = """Kamu editor cerita horor yang ketat dan independen untuk channel YouTube. Kamu tidak menulis naskah ini dan tidak boleh menganggapnya bagus.
-Periksa:
-1. ORISINALITAS: apakah alur, tokoh, atau twist-nya menjiplak cerita terkenal (podcast RJL 5, Lentera Malam, Nessie Judge, film horor, KKN di Desa Penari, creepypasta terkenal)? Gunakan WebSearch bila ragu. Menjiplak = major. Memakai folklor umum boleh.
-2. KEAMANAN konten YouTube: gore atau detail luka, bunuh diri/melukai diri, konten seksual, anak sebagai korban kekerasan, menjelekkan agama/suku/kelompok, tokoh atau tragedi nyata, menuduh tempat nyata spesifik angker, ritual berbahaya yang bisa ditiru. Pelanggaran = major.
-3. JANJI: apakah cerita menepati judul, hook thumbnail, dan "promise"? Tidak menepati = major.
-4. KUALITAS: pembuka langsung mencekam dalam 15 detik; eskalasi tidak datar; twist/peak ada dan terasa; penutup tidak antiklimaks; POV "kamu" konsisten; nada serius terjaga (humor, lelucon, atau rujukan anime/game yang memecah ketegangan = major); logika cerita tidak bolong parah. Bolong parah atau pembuka/penutup gagal = major; sisanya minor.
+VERIFIER_SYS = """Kamu editor yang ketat dan independen untuk channel YouTube lore hero game. Kamu tidak menulis naskah ini dan tidak boleh menganggapnya bagus.
+Kamu diberi naskah, "paket" (termasuk game-nya), dan "sumber" (lore resmi hero itu dari pembuat game-nya). Periksa:
+1. KESETIAAN LORE: apakah ada fakta yang bertentangan dengan lore resmi, atau karangan yang disajikan sebagai fakta (bukan sebagai dramatisasi suasana atau teori penggemar)? Itu major. Dramatisasi suasana dan perasaan yang tidak mengubah fakta boleh.
+2. FAKTA GAME: skill, nama tempat, tokoh lain, dan (untuk Dota 2) nama atau julukan di DotA 1. Gunakan WebSearch untuk memeriksa yang kamu ragukan. Fakta salah = major.
+3. TIDAK MENERJEMAHKAN MENTAH: bagian yang hanya terjemahan kalimat per kalimat dari lore resmi = major (kita harus menceritakan ulang).
+4. KEAMANAN konten YouTube: gore atau detail luka, konten seksual, menjelekkan agama/suku/kelompok nyata. Pelanggaran = major.
+5. JANJI: apakah naskah menepati judul, hook thumbnail, dan "promise"? Tidak = major.
+6. KUALITAS: pembuka langsung menggigit dalam 15 detik; alur tidak datar; puncak terasa; penutup berkesan; naskah fokus pada kisah hero (selingan tentang pemain, warnet, gameplay, atau meta = major; satu kalimat nama DotA 1 boleh). Panjang tidak dinilai dari jumlah kata: bagian lore penting yang terlewat = major, bagian yang hanya mengulang atau basa-basi = minor.. Pembuka/penutup gagal = major; sisanya minor.
 severity "major" atau "minor". verdict "pass" hanya jika tidak ada issue major.
 
 Balas HANYA JSON:
 {"verdict":"pass|revise","issues":[{"severity":"major|minor","quote":"kutipan persis dari narasi","problem":"...","fix":"saran perbaikan"}]}"""
 
-REVISER_SYS = """Perbaiki naskah horor sesuai temuan editor. Judul tetap, kecuali editor menandai judul itu sendiri sebagai major: ubah seminimal mungkin agar jujur, maks 60 karakter; naskah harus tetap menepati "promise" di paket, dengan pembuka yang langsung mencekam dan penutup yang berkesan. Pertahankan POV "kamu", gaya, dan panjang {min_words}-{max_words} kata. Balas HANYA JSON dengan bentuk yang sama seperti input (title, description, tags, narration, inspirations)."""
+REVISER_SYS = """Perbaiki naskah lore sesuai temuan editor. Judul tetap, kecuali editor menandai judul itu sendiri sebagai major: ubah seminimal mungkin agar jujur, maks 60 karakter; naskah harus tetap menepati "promise" di paket dan setia pada "sumber" (lore resmi), dengan pembuka yang menggigit dan penutup yang berkesan. Pertahankan gaya narator; panjang tetap mengikuti isi lore. Balas HANYA JSON dengan bentuk yang sama seperti input (title, description, tags, narration, inspirations)."""
 
 
 def words(s):
     return len(s["narration"].split())
 
 
-def main(slug, topic, minutes=6.5, rounds=6):
+def main(slug, topic, minutes=None, rounds=6):
     d = run_dir(slug)
     pack = load(d / "plan.json") if (d / "plan.json").exists() else {}
-    pack = {k: pack[k] for k in ("title", "query", "hook", "promise", "angle", "peak") if k in pack}
-    # Videos run 5-8 minutes. Gemini's slow horror read runs about 79 words a minute (measured 2026-11-10: 706 words, 538 s; edge-tts Ardi
-    # read about 102), so the word count follows that voice.
-    lo, hi = int(minutes * 74), int(minutes * 86)
-    floor = int(min(5.2, minutes * 0.8) * 79)  # a normal run under this falls short of 5 minutes; short tests scale down
-    fmt = dict(min_words=lo, max_words=hi, minutes=minutes)
+    folder = ROOT / pack["hero_dir"] if pack.get("hero_dir") else None
+    pack = {k: pack[k] for k in ("title", "game_name", "hero_name", "hook", "promise", "angle", "peak", "mood") if k in pack}
+    info = load(folder / "hero.json") if folder else {}
+    source = {k: info[k] for k in ("name", "title", "lore", "hype", "summary", "abilities", "attribute") if k in info}
+    # The video is as long as the lore needs (the user's rule); there is no word target. `minutes` is ignored.
     if (d / "script.draft.json").exists():
         s = load(d / "script.draft.json")
         log("resuming from existing draft, words", words(s))
     else:
         log("writer: sonnet writing", topic)
-        s = claude_json("sonnet", WRITER_SYS.format(**fmt), f"Topik: {topic}\n\npaket: " + json.dumps(pack, ensure_ascii=False),
+        s = claude_json("sonnet", WRITER_SYS, f"Topik: {topic}\n\npaket: " + json.dumps(pack, ensure_ascii=False)
+                        + "\n\nsumber: " + json.dumps(source, ensure_ascii=False),
                         )
         if pack.get("title"):  # the researched title stands; the writer only delivers on it
             s["title"] = pack["title"]
@@ -72,14 +72,13 @@ def main(slug, topic, minutes=6.5, rounds=6):
         else:
             log(f"verifier round {r}: opus")
             report = claude_json("opus", VERIFIER_SYS, json.dumps(
-                {**{k: s.get(k) for k in ("title", "narration", "inspirations")}, "paket": pack,
+                {**{k: s.get(k) for k in ("title", "narration", "inspirations")}, "paket": pack, "sumber": source,
                  "thumbnail_hook": pack.get("hook")}, ensure_ascii=False), web=True)
             save(f, report)
         issues = report.get("issues", [])
         major = [i for i in issues if i.get("severity") == "major"]
         log("verdict", report["verdict"], "major", len(major), "minor", len(issues) - len(major), "words", words(s))
-        short = words(s) < floor
-        if not major and not short:  # the rule is "no major issues"; the verifier sometimes says revise over minors
+        if not major:  # the rule is "no major issues"; the verifier sometimes says revise over minors
             save(d / "script.json", s)
             log("PASS words", words(s))
             return
@@ -90,19 +89,16 @@ def main(slug, topic, minutes=6.5, rounds=6):
             log("reusing saved revision", r, "words", words(s))
             continue
         log("reviser: sonnet")
-        ask = {"script": s, "issues": issues, "paket": pack}
-        if short:
-            ask["panjang"] = (f"Narasi sekarang {words(s)} kata, terlalu pendek. Tambah adegan dan ketegangan baru yang "
-                              f"benar-benar menambah cerita sampai {lo}-{hi} kata.")
-        reply = claude_json("sonnet", REVISER_SYS.format(**fmt), json.dumps(ask, ensure_ascii=False))
+        ask = {"script": s, "issues": issues, "paket": pack, "sumber": source}
+        reply = claude_json("sonnet", REVISER_SYS, json.dumps(ask, ensure_ascii=False))
         s = reply.get("script", reply)  # the reply may mirror the input's wrapper
         if pack.get("title") and not any(i.get("quote") == pack["title"] for i in major):
             s["title"] = pack["title"]  # the researched title stands unless the verifier flagged the title itself
         save(d / f"script.rev{r}.json", s)
         log("revised words", words(s))
     save(d / "script.rejected.json", s)
-    sys.exit("REJECTED: the editor still reports major issues or the script is too short; nothing proceeds")
+    sys.exit("REJECTED: the editor still reports major issues; nothing proceeds")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 6.5)
+    main(sys.argv[1], sys.argv[2])

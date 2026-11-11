@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
 from common import ROOT, RUNS, load, log
 from topic import plan
+import heroes
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
@@ -65,10 +66,14 @@ def stage_of(rid):
 
 def mark_rendered(rid, d, s):
     """Records a finished final.mp4 with its YouTube title, description and tags; /api/ready then serves it."""
-    desc = (f"{s['description']}\n\nSemua cerita di channel ini adalah fiksi orisinal. Kesamaan nama, tempat, atau "
-            f"kejadian hanyalah kebetulan. Ilustrasi dan suara narator dibuat dengan bantuan AI; efek suara CC0 "
-            f"(OpenGameArt, Kenney).\n\nPunya pengalaman yang mirip? Ceritakan di kolom komentar.\n\n"
-            f"#horor #ceritahoror #hororindonesia #jangansendirian")
+    p = load(d / "plan.json") if (d / "plan.json").exists() else {}
+    game = heroes.BY_KEY.get(p.get("game"), heroes.GAMES[0])
+    desc = (f"{s['description']}\n\nLore resmi hero dari {game.name} ({game.owner}), diceritakan ulang dan didramatisasi "
+            f"oleh Hikayat Ancient. {game.name} dan semua asetnya milik {game.owner}; video ini konten penggemar, tidak "
+            f"berafiliasi dengan atau didukung oleh {game.owner}. Ilustrasi dan suara narator dibuat dengan bantuan AI; efek "
+            f"suara CC0 (OpenGameArt, Kenney).\n\nHero mana yang kisahnya ingin kamu dengar berikutnya? Tulis di kolom "
+            f"komentar.\n\n"
+            f"{game.hashtags} #hikayatancient")
     dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
                                          "csv=p=0", d / "final.mp4"]))
     update(rid, status="rendered", stage=None, error=None, finished_at=now().isoformat(), data=json.dumps(
@@ -86,7 +91,8 @@ def produce(slot):
     state["busy"] = rid
     try:
         with db() as c:
-            prev = [r[0] for r in c.execute("SELECT topic FROM runs WHERE topic IS NOT NULL")]
+            # Samples are tests, not published videos: their hero is still to come.
+            prev = [r[0] for r in c.execute("SELECT topic FROM runs WHERE topic IS NOT NULL AND slot != 'sample'")]
         topic = plan(prev, d)["topic"]
         update(rid, topic=topic)
         log(rid, "topic:", topic)

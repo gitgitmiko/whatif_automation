@@ -169,15 +169,79 @@ def moving(d, x, length):
     return out
 
 
-def ambient(d, seconds):
-    """A low drone with slow swells under the whole video, synthesised so it carries no licence."""
+def reveal(q, batch, P, d, scenes, folder):
+    """The hero's official art (render or splash) over the scene storyboard.py marked, growing in slowly: the one moment the
+    hero is shown as it really looks, since the drawn scenes keep it a silhouette."""
+    info = load(ROOT / folder / "hero.json") if folder and (ROOT / folder / "hero.json").exists() else {}
+    render = ROOT / str(folder) / info.get("reveal", "render.png")
+    x = next((x for x in scenes if x.get("reveal")), None)
+    if not render.exists() or x is None:
+        return
+    length = x["end"] - x["start"]
+    top = q("track_add", path=P)["createdId"]
+    cid = q("clip_add", path=P, mediaId=q("media_import", path=P, file=str(render))["createdId"], trackId=top,
+            start=x["start"])["createdId"]
+    q("clip_trim", path=P, clipId=cid, edge="end", delta=length - 5.0)
+    batch([{"op": "setClipKey", "clipId": cid, "property": "opacity", "at": 0.0, "value": 0.0},
+           {"op": "setClipKey", "clipId": cid, "property": "opacity", "at": min(0.6 / length, 0.3), "value": 1.0, "ease": EASE},
+           {"op": "setClipKey", "clipId": cid, "property": "opacity", "at": max(1 - 0.4 / length, 0.7), "value": 1.0},
+           {"op": "setClipKey", "clipId": cid, "property": "opacity", "at": 1.0, "value": 0.0},
+           {"op": "setClipKey", "clipId": cid, "property": "scale", "at": 0.0, "value": 0.92},
+           {"op": "setClipKey", "clipId": cid, "property": "scale", "at": 1.0, "value": 1.0, "ease": EASE}])
+    log(f"hero render over scene {x['i']}")
+
+
+# Ambience beds by place, synthesised from noise and tones so they carry no licence (ffmpeg lavfi; D = seconds).
+BEDS = {
+    "sea": "anoisesrc=color=brown:amplitude=0.7:duration={D},lowpass=f=700,tremolo=f=0.1:d=0.85,volume=1.6",
+    "rain": "anoisesrc=color=pink:amplitude=0.4:duration={D},highpass=f=900,lowpass=f=7000,volume=0.9",
+    "wind": "anoisesrc=color=pink:amplitude=0.6:duration={D},bandpass=f=500:width_type=h:w=600,tremolo=f=0.17:d=0.7,volume=1.4",
+    "cave": "sine=frequency=49:duration={D},volume=0.4,aecho=0.8:0.7:420|780:0.35|0.2",
+    "fire": "anoisesrc=color=brown:amplitude=0.6:duration={D},lowpass=f=1400,tremolo=f=7:d=0.35,volume=1.2",
+    "forest": "anoisesrc=color=pink:amplitude=0.3:duration={D},lowpass=f=2500,tremolo=f=0.12:d=0.5,volume=0.8",
+    "battle": "anoisesrc=color=brown:amplitude=0.8:duration={D},lowpass=f=260,tremolo=f=0.6:d=0.5,volume=1.8",
+    "magic": "sine=frequency=220:duration={D},tremolo=f=0.3:d=0.6,chorus=0.6:0.8:55:0.4:0.3:2,volume=0.25",
+    "dark": "sine=frequency=55:duration={D},volume=0.5,tremolo=f=0.13:d=0.6",
+}
+
+
+def ambient(d, seconds, mood="misterius", scenes=()):
+    """The ambience under the whole video: each run of scenes in one kind of place gets its bed, crossfading into the
+    next over 1.5 s; quieter under the stories that are not dark."""
     out = d / "ambient.wav"
-    D = f"{seconds:.1f}"
-    ff("-f", "lavfi", "-i", f"sine=frequency=55:duration={D}", "-f", "lavfi", "-i", f"sine=frequency=82.4:duration={D}",
-       "-f", "lavfi", "-i", f"anoisesrc=color=brown:amplitude=0.5:duration={D}", "-filter_complex",
-       "[0]volume=0.5[a];[1]volume=0.25,tremolo=f=0.13:d=0.6[b];[2]lowpass=f=400,volume=0.6,tremolo=f=0.1:d=0.5[c];"
-       f"[a][b][c]amix=inputs=3:normalize=0,afade=t=in:d=4,afade=t=out:st={seconds - 4:.1f}:d=4,loudnorm=I=-32",
-       "-ar", "48000", "-ac", "2", str(out))
+    runs = []  # (kind, start, end)
+    for x in scenes:
+        kind = x.get("ambience") or "dark"
+        if runs and runs[-1][0] == kind:
+            runs[-1][2] = x["end"]
+        else:
+            runs.append([kind, x["start"], x["end"]])
+    if not runs:
+        runs = [["dark", 0.0, seconds]]
+    runs[0][1], runs[-1][2] = 0.0, seconds
+    XA = 1.5
+    parts = []
+    for n, (kind, a, b) in enumerate(runs):
+        f = d / f"bed-{n:02}.wav"
+        length = b - a + (XA if n < len(runs) - 1 else 0)
+        # Each bed levelled on its own first: raw, rain and magic came out 15 dB under fire and battle.
+        ff("-f", "lavfi", "-i", BEDS[kind].format(D=f"{length:.2f}"), "-af", "loudnorm=I=-30:LRA=7",
+           "-ar", "48000", "-ac", "2", str(f))
+        parts.append(f)
+    if len(parts) == 1:
+        chain, label = "", "[0]"
+    else:
+        chain, label = "", "[0]"
+        for n in range(1, len(parts)):
+            chain += f"{label}[{n}]acrossfade=d={XA}:c1=tri:c2=tri[x{n}];"
+            label = f"[x{n}]"
+    level = -30 if mood in ("horor", "misterius") else -34
+    ff(*[a for f in parts for a in ("-i", str(f))], "-filter_complex",
+       chain + f"{label}afade=t=in:d=3,afade=t=out:st={seconds - 4:.1f}:d=4,loudnorm=I={level}[o]", "-map", "[o]",
+       "-t", f"{seconds:.2f}", "-ar", "48000", "-ac", "2", str(out))
+    for f in parts:
+        f.unlink(missing_ok=True)
+    log("ambience: " + " > ".join(k for k, _, _ in runs))
     return out
 
 
@@ -267,6 +331,8 @@ def main(slug, limit=None):
         if clip:
             animated.add(n)
     log(f"placed {len(clips)} scenes ({len(animated)} moving) in {time.time() - t0:.0f}s")
+    plan = load(d / "plan.json") if (d / "plan.json").exists() else {}
+    reveal(q, batch, P, d, scenes, plan.get("hero_dir"))
 
     # One cut per scene change, never the same twice running. Odd scenes sit on the upper lane and draw both
     # their entry and their exit, and a picture has one mask, so those two never both need one.
@@ -320,7 +386,7 @@ def main(slug, limit=None):
     bed = q("track_add", path=P, bottom=True)["createdId"]
     # Exactly as long as the narration plus the outro (outro() adds 1.2 s after its line): a longer bed runs on past the end card as black.
     bed_len = scenes[-1]["end"] + duration(d / "outro.mp3") + 1.2
-    q("clip_add", path=P, mediaId=q("media_import", path=P, file=str(ambient(d, bed_len)))["createdId"],
+    q("clip_add", path=P, mediaId=q("media_import", path=P, file=str(ambient(d, bed_len, plan.get("mood", "misterius"), scenes)))["createdId"],
       trackId=bed, start=0)
     lanes = [q("track_add", path=P, bottom=True)["createdId"] for _ in range(2)]
     media, ends, placed = {}, {ln: -1.0 for ln in lanes}, 0
