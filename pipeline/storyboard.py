@@ -24,7 +24,7 @@ Hero dan tokoh lain dari game itu: JANGAN gambar wajah atau desainnya secara utu
 SEMUA adegan berada di dunia hero itu; bila narasi menyebut game lama atau versi sebelumnya, gambar tetap adegan dari kisah hero (tanpa komputer, pemain, atau dunia nyata).
 Variasikan sudut kamera (wide shot dunia yang luas, close-up tangan atau senjata, dari bawah yang megah, dari atas) agar penonton tidak bosan.
 Aturan: tanpa teks, huruf, angka, logo, atau antarmuka game; tanpa tokoh nyata atau merek; tanpa darah, gore, atau konten seksual; simbol agama hanya bila perlu dan dengan hormat.
-"reveal": nomor potongan (i) di 45 detik pertama tempat hero ini paling pas diperkenalkan dengan jelas (potret resminya akan ditampilkan di atas gambar potongan itu); gambar latarnya cukup tempat hero itu berada, tanpa sosok di tengah.
+"reveal": nomor potongan (i) di awal video yang memuat kalimat jembatan, yaitu saat narator menyebut Hikayat Ancient dan memperkenalkan hero hari ini (potret resmi hero beserta nama channel dan nama hero akan ditampilkan di atas gambar potongan itu); gambar latarnya cukup tempat hero itu berada, tanpa sosok di tengah.
 
 "ambience": suara latar yang terdengar di tempat potongan itu, salah satu: sea (laut, pantai, kapal), rain (hujan, badai), wind (gunung, padang, salju, ketinggian), cave (gua, ruang bawah tanah, kuil sunyi), fire (api, kota terbakar, tungku), forest (hutan, alam yang tenang), battle (medan perang, pasukan), magic (sihir, dimensi lain, ritual), dark (kegelapan, kehampaan, ancaman tanpa tempat jelas). Biarkan sama untuk potongan berurutan di tempat yang sama.
 

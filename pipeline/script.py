@@ -13,8 +13,10 @@ Aturan naskah:
 - Hubungkan kisah dengan skill hero bila cocok (mis. dari mana kekuatan itu berasal), supaya pemain merasa "oh, pantas skill-nya begitu".
 - Fokus penuh pada kisah hero: tanpa selingan tentang pemain, warnet, gameplay, meta, atau channel. Bila game-nya Dota 2, boleh SATU kalimat singkat yang menyebut nama atau julukan hero ini di DotA 1 (mis. "di DotA 1 dulu dikenal sebagai Yurnero, the Juggernaut"), hanya bila kamu yakin benar; bila ragu, lewati.
 - Suasana mengikuti "mood" paket (epik, tragis, misterius, horor, atau hangat), tidak semua cerita harus seram.
-- 15 DETIK PERTAMA (sekitar 40 kata) langsung masuk ke momen paling kuat atau pertanyaan yang bikin penasaran tentang hero ini. Jangan buka dengan "di video ini" atau sapaan channel.
-- Alur: pembuka yang menggigit, asal-usul, momen yang mengubah segalanya, siapa dia sekarang (dan hubungannya dengan skill), puncak sesuai "peak" paket, penutup yang berkesan.
+- PEMBUKA dalam dua langkah, sebelum kisah dimulai:
+  1. HOOK (1-3 kalimat, maks sekitar 25 kata): langsung masuk ke momen paling kuat atau pertanyaan yang bikin penasaran tentang hero ini. Jangan buka dengan "di video ini", sapaan, atau nama channel.
+  2. JEMBATAN (1-2 kalimat, maks sekitar 30 kata), tepat setelah hook: perkenalan singkat bahwa ini channel Hikayat Ancient yang membuka kisah di balik para hero game, lalu siapa hero hari ini (nama, julukan atau perannya, dan game-nya). Rangkai kalimatnya dengan kata-kata sendiri yang menyambung dengan hook, jangan kalimat template yang sama di setiap video (contoh gaya saja: "Di Hikayat Ancient, kita membuka kisah yang tersembunyi di balik setiap hero. Kali ini, Alchemist dari Dota 2: penjudi yang mempertaruhkan segalanya pada satu ramuan.").
+- Alur setelah pembuka: asal-usul, momen yang mengubah segalanya, siapa dia sekarang (dan hubungannya dengan skill), puncak sesuai "peak" paket, penutup yang berkesan.
 - Kekerasan dari lore boleh disebut tanpa detail grafis (tanpa gore, tanpa detail luka). Tanpa konten seksual, tanpa menjelekkan agama, suku, atau kelompok nyata.
 - Penutup: satu kalimat yang mengajak penonton berdiskusi di komentar tentang kisah ini (mis. "Menurutmu, apakah dia pantas dimaafkan?").
 - Tulis untuk didengar: tanpa markdown, tanpa daftar, tanpa URL. Jangan menutup dengan ajakan like, subscribe, atau lonceng: itu ditambahkan otomatis di akhir video.
@@ -31,7 +33,7 @@ Kamu diberi naskah, "paket" (termasuk game-nya), dan "sumber" (lore resmi hero i
 3. TIDAK MENERJEMAHKAN MENTAH: bagian yang hanya terjemahan kalimat per kalimat dari lore resmi = major (kita harus menceritakan ulang).
 4. KEAMANAN konten YouTube: gore atau detail luka, konten seksual, menjelekkan agama/suku/kelompok nyata. Pelanggaran = major.
 5. JANJI: apakah naskah menepati judul, hook thumbnail, dan "promise"? Tidak = major.
-6. KUALITAS: pembuka langsung menggigit dalam 15 detik; alur tidak datar; puncak terasa; penutup berkesan; naskah fokus pada kisah hero (selingan tentang pemain, warnet, gameplay, atau meta = major; satu kalimat nama DotA 1 boleh). Panjang tidak dinilai dari jumlah kata: bagian lore penting yang terlewat = major, bagian yang hanya mengulang atau basa-basi = minor.. Pembuka/penutup gagal = major; sisanya minor.
+6. KUALITAS: pembuka = HOOK yang langsung menggigit (tanpa sapaan atau nama channel), lalu JEMBATAN singkat yang menyebut Hikayat Ancient dan hero hari ini; hook atau jembatan yang tidak ada, terbalik, atau lebih dari sekitar 60 kata bersama = major; alur tidak datar; puncak terasa; penutup berkesan; naskah fokus pada kisah hero (selingan tentang pemain, warnet, gameplay, atau meta = major; satu kalimat nama DotA 1 boleh). Panjang tidak dinilai dari jumlah kata: bagian lore penting yang terlewat = major, bagian yang hanya mengulang atau basa-basi = minor.. Pembuka/penutup gagal = major; sisanya minor.
 severity "major" atau "minor". verdict "pass" hanya jika tidak ada issue major.
 
 Balas HANYA JSON:

@@ -171,7 +171,8 @@ def moving(d, x, length):
 
 def reveal(q, batch, P, d, scenes, folder):
     """The hero's official art (render or splash) over the scene storyboard.py marked, growing in slowly: the one moment the
-    hero is shown as it really looks, since the drawn scenes keep it a silhouette."""
+    hero is shown as it really looks, since the drawn scenes keep it a silhouette. That scene carries the narration's
+    bridge (the channel and today's hero), so the channel name and the hero's name stand at the top as a title card."""
     info = load(ROOT / folder / "hero.json") if folder and (ROOT / folder / "hero.json").exists() else {}
     render = ROOT / str(folder) / info.get("reveal", "render.png")
     x = next((x for x in scenes if x.get("reveal")), None)
@@ -188,7 +189,20 @@ def reveal(q, batch, P, d, scenes, folder):
            {"op": "setClipKey", "clipId": cid, "property": "opacity", "at": 1.0, "value": 0.0},
            {"op": "setClipKey", "clipId": cid, "property": "scale", "at": 0.0, "value": 0.92},
            {"op": "setClipKey", "clipId": cid, "property": "scale", "at": 1.0, "value": 1.0, "ease": EASE}])
-    log(f"hero render over scene {x['i']}")
+    cards = [("HIKAYAT ANCIENT", 0.042, "#FFD25A", -0.41)]
+    name = " ".join(filter(None, [info.get("name"), info.get("title") and f"- {info['title']}"])).upper()
+    if name:
+        cards.append((name, 0.085, "#FFFFFF", -0.31))
+    at, dur = x["start"] + 0.4, max(length - 0.8, 1.0)
+    for text, size, colour, y in cards:
+        style = dict(CAPTION, content=text, color=colour, fontSize=size, strokeWidth=0.004, maxWidth=0.9)
+        tid = q("title_add", path=P, start=at, duration=dur, above=True, style=style)["createdId"]
+        q("clip_transform", path=P, clipId=tid, offsetY=y)
+        batch([{"op": "setClipKey", "clipId": tid, "property": "opacity", "at": 0.0, "value": 0.0},
+               {"op": "setClipKey", "clipId": tid, "property": "opacity", "at": min(0.4 / dur, 0.3), "value": 1.0, "ease": EASE},
+               {"op": "setClipKey", "clipId": tid, "property": "opacity", "at": max(1 - 0.3 / dur, 0.7), "value": 1.0},
+               {"op": "setClipKey", "clipId": tid, "property": "opacity", "at": 1.0, "value": 0.0}])
+    log(f"hero render and title card over scene {x['i']}: {name or '(no name)'}")
 
 
 # Ambience beds by place, synthesised from noise and tones so they carry no licence (ffmpeg lavfi; D = seconds).
