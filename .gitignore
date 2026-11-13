@@ -7,3 +7,5 @@ assets/sfx-src/
 assets/music-src/
 __pycache__/
 n8n/*.import.json
+shorts/node_modules/
+shorts/out/

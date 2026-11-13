@@ -1,10 +1,10 @@
-"""The "Apa yang terjadi jika" service: makes one video a day on its own clock and serves them to n8n,
-which uploads them at their publishing time. Mirrors the KUISABON service's API so the same dashboard and
-n8n patterns work.
+"""The "Gimana Jadinya?" service: makes three animated Shorts a day (shorts/produce.py) on its own clock and serves
+them to n8n, which uploads them at their publishing time. Mirrors the KUISABON service's API so the same dashboard
+and n8n patterns work.
 
   GET  /health
-  POST /api/run {slot}                    starts a production now (siang | sore), 202
-  GET  /api/ready?slot=siang|sore         the newest finished, not yet uploaded video for that slot (404 if none)
+  POST /api/run {slot}                    starts a production now (pagi | sore | malam), 202
+  GET  /api/ready?slot=pagi|sore|malam    the newest finished, not yet uploaded video for that slot (404 if none)
   GET  /api/videos/<id>.mp4
   POST /api/videos/<id>/uploaded {youtube_id} | /failed {error}
   GET  /api/monitor/overview | history?page&pageSize&status&date | logs?lines   for dashboard-gitgit
@@ -16,15 +16,16 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
 from common import ROOT, RUNS, load, log
-from topic import plan
-import heroes
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
 WIB = dt.timezone(dt.timedelta(hours=7))
-# slot -> (production starts, upload time). A video takes about two and a half hours to make; the rest is slack
-# for a Google Flow hiccup. One a day: more of the same template risks YouTube's mass-produced content rule.
-SLOTS = {"siang": ("07:00", "12:00")}
+# slot -> (production starts, upload time). A Short takes 10-20 minutes to make (most of it Claude writing and
+# fact-checking); the rest of the hour and a half is room for a retry.
+SLOTS = {"pagi": ("08:30", "10:00"), "sore": ("13:30", "15:00"), "malam": ("18:30", "20:00")}
+RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
+SHORTS = ROOT / "shorts"
+PYTHON = ROOT / ".venv" / "bin" / "python"
 KEEP_DAYS = 7
 PIPE = ROOT / "pipeline"
 DB = ROOT / "data" / "whatif.db"
@@ -51,33 +52,28 @@ def update(rid, **f):
 
 
 def stage_of(rid):
-    """What the run is doing, read from its logs; image progress counted from files."""
-    d = RUNS / rid
-    lines = [l for f in ("run.log", "script.log") if (d / f).exists() for l in (d / f).read_text().splitlines()]
+    """What the run is doing, read from the STAGE lines produce.py prints."""
+    f = RUNS / rid / "run.log"
+    lines = f.read_text().splitlines() if f.exists() else []
     stage = next((l.split()[1] for l in reversed(lines) if l.startswith("STAGE ")), None)
-    if not (d / "plan.json").exists():
-        return "riset topik"
-    if stage is None:
-        return "naskah: " + ("verifikasi" if any("verifier" in l for l in lines) else "riset & menulis")
-    if stage == "images" and (d / "scenes.json").exists():
-        return f"gambar {len(list((d / 'images').glob('*.jpg')))}/{len(load(d / 'scenes.json'))}"
-    return {"storyboard": "storyboard", "annotate": "storyboard", "tts": "suara", "clips": "gambar bergerak", "edit": "edit & export"}.get(stage, stage)
+    return {"naskah": "riset & menulis", "cek": "cek fakta", "suara": "suara", "render": "render"}.get(stage, stage or "mulai")
 
 
 def mark_rendered(rid, d, s):
     """Records a finished final.mp4 with its YouTube title, description and tags; /api/ready then serves it."""
-    p = load(d / "plan.json") if (d / "plan.json").exists() else {}
-    game = heroes.BY_KEY.get(p.get("game"), heroes.GAMES[0])
-    desc = (f"{s['description']}\n\nLore resmi hero dari {game.name} ({game.owner}), diceritakan ulang dan didramatisasi "
-            f"oleh Hikayat Ancient. {game.name} dan semua asetnya milik {game.owner}; video ini konten penggemar, tidak "
-            f"berafiliasi dengan atau didukung oleh {game.owner}. Ilustrasi dan suara narator dibuat dengan bantuan AI; efek "
-            f"suara CC0 (OpenGameArt, Kenney).\n\nHero mana yang kisahnya ingin kamu dengar berikutnya? Tulis di kolom "
-            f"komentar.\n\n"
-            f"{game.hashtags} #hikayatancient")
+    sources = "\n".join(f"- {u}" for u in s.get("sources", [])[:4])
+    desc = (f"{s.get('description', '')}\n\n" + (f"Sumber:\n{sources}\n\n" if sources else "") +
+            "Animasi dan narasi dibuat dengan bantuan AI; fakta dicek dari sumber di atas. Efek suara CC0 "
+            "(OpenGameArt, Kenney).\n\nPunya pertanyaan \"gimana jadinya kalau…\"? Tulis di komentar, siapa tahu jadi "
+            "video berikutnya!\n\n#GimanaJadinya #Shorts #Sains #FaktaUnik")
+    title = s["yt_title"]
+    if len(title) + 8 <= 100:
+        title += " #shorts"
+    tags = list(dict.fromkeys([*s.get("tags", []), "gimana jadinya", "shorts", "sains"]))[:15]
     dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
                                          "csv=p=0", d / "final.mp4"]))
     update(rid, status="rendered", stage=None, error=None, finished_at=now().isoformat(), data=json.dumps(
-        {"title": s["title"][:100], "description": desc[:4900], "tags": s.get("tags", [])[:15], "duration_s": round(dur)},
+        {"title": title[:100], "description": desc[:4900], "tags": tags, "duration_s": round(dur)},
         ensure_ascii=False))
 
 
@@ -87,30 +83,18 @@ def produce(slot):
     d.mkdir(parents=True)
     with db() as c:
         c.execute("INSERT INTO runs (id, slot, status, stage, started_at) VALUES (?,?,?,?,?)",
-                  (rid, slot, "running", "topik", now().isoformat()))
+                  (rid, slot, "running", "naskah", now().isoformat()))
     state["busy"] = rid
     try:
-        with db() as c:
-            # Samples are tests, not published videos: their hero is still to come.
-            prev = [r[0] for r in c.execute("SELECT topic FROM runs WHERE topic IS NOT NULL AND slot != 'sample'")]
-        topic = plan(prev, d)["topic"]
-        update(rid, topic=topic)
-        log(rid, "topic:", topic)
-        with open(d / "script.log", "w") as f:
-            subprocess.run([sys.executable, PIPE / "script.py", rid, topic, "6.5"], stdout=f, stderr=subprocess.STDOUT,
-                           cwd=PIPE, check=True)
-        s = load(d / "script.json")
-        update(rid, title=s["title"])
         with open(d / "run.log", "w") as f:
-            subprocess.run([PIPE / "run_all.sh", rid], stdout=f, stderr=subprocess.STDOUT, cwd=PIPE, check=True)
+            subprocess.run([PYTHON, SHORTS / "produce.py", rid], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
+                           check=True, timeout=5400)
+        s = load(d / "script.json")
+        update(rid, topic=s["title"], title=s["yt_title"])
         mark_rendered(rid, d, s)
-        log(rid, "rendered", s["title"])
+        log(rid, "rendered", s["yt_title"])
     except Exception as e:
-        tail = ""
-        for f in ("run.log", "script.log"):
-            if (d / f).exists():
-                tail = " | ".join((d / f).read_text().strip().splitlines()[-3:])
-                break
+        tail = " | ".join((d / "run.log").read_text().strip().splitlines()[-3:]) if (d / "run.log").exists() else ""
         update(rid, status="failed", stage=None, finished_at=now().isoformat(), error=f"{e} :: {tail}"[:1000])
         log(rid, "failed:", e, tail)
     finally:
@@ -126,23 +110,34 @@ def start(slot):
     return True
 
 
+def todays(slot, day):
+    with db() as c:
+        return c.execute("SELECT status, finished_at FROM runs WHERE slot=? AND substr(started_at,1,10)=? "
+                         "ORDER BY started_at", (slot, day.isoformat())).fetchall()
+
+
 def scheduler():
-    """Starts each slot's production at its time, once a day; also tidies runs older than a week."""
-    done = set()
+    """Starts each slot's production at its time; one that fails is tried again while there is time before the
+    upload. Also tidies runs older than a week."""
     while True:
         t = now()
-        for slot, (make, _) in SLOTS.items():
-            key = (t.date(), slot)
-            hh, mm = map(int, make.split(":"))
-            due = t.replace(hour=hh, minute=mm, second=0, microsecond=0)
-            # PAUSE_PRODUCTION=1 in .env stops the daily run (e.g. while moving to a new channel); /api/run still works.
-            if key not in done and ENV.get("PAUSE_PRODUCTION") != "1" and due <= t < due + dt.timedelta(minutes=30):
-                done.add(key)
-                if not start(slot):
-                    log("scheduler: busy, skipped", slot)
-                else:
-                    log("scheduler: started", slot)
-        if t.minute == 0:
+        for slot, (make, up) in SLOTS.items():
+            due = t.replace(hour=int(make[:2]), minute=int(make[3:]), second=0, microsecond=0)
+            upload = t.replace(hour=int(up[:2]), minute=int(up[3:]), second=0, microsecond=0)
+            # PAUSE_PRODUCTION=1 in .env stops the daily runs (e.g. while moving to a new channel); /api/run still works.
+            if ENV.get("PAUSE_PRODUCTION") == "1" or not due <= t < upload - RETRY_UNTIL or state["busy"]:
+                continue
+            if t.date().isoformat() < ENV.get("UPLOAD_FROM", ""):  # it could not be uploaded anyway
+                continue
+            runs = todays(slot, t.date())
+            if any(r["status"] in ("running", "rendered", "uploaded") for r in runs) or len(runs) >= 3:
+                continue
+            # Give a passing outage (Claude, edge-tts) five minutes before trying again.
+            if runs and runs[-1]["finished_at"] and t - dt.datetime.fromisoformat(runs[-1]["finished_at"]) < dt.timedelta(minutes=5):
+                continue
+            log("scheduler:", "retrying" if runs else "starting", slot)
+            start(slot)
+        if t.minute == 0 and t.second < 30:
             cutoff = time.time() - KEEP_DAYS * 86400
             for d in RUNS.glob("2*-*"):
                 if d.is_dir() and d.stat().st_mtime < cutoff:
@@ -189,7 +184,7 @@ def overview():
         for slot, (make, up) in SLOTS.items():
             hh, mm = map(int, up.split(":"))
             at = (t + dt.timedelta(days=day)).replace(hour=hh, minute=mm, second=0, microsecond=0)
-            if at > t and not nxt:
+            if at > t and not nxt and at.date().isoformat() >= ENV.get("UPLOAD_FROM", ""):
                 nxt = {"at": at.isoformat(), "slot": slot, "upload": up, "produce": make}
     count = lambda lst, s: sum(1 for x in lst if x["status"] == s)
     return {"now": t.isoformat(), "service": {"busy": state["busy"], "stage": stage_of(state["busy"]) if state["busy"] and state["busy"] != "starting" else None},
@@ -277,7 +272,7 @@ class H(BaseHTTPRequestHandler):
             f = RUNS / m[1] / "final.mp4"
             if not r or r["status"] != "rendered" or not f.exists():
                 return self.send(404, {"error": "preview no longer available"})
-            return self.send_file(f, f"whatif-{m[1]}.mp4")
+            return self.send_file(f, f"gimanajadinya-{m[1]}.mp4")
         if not TOKEN or self.headers.get("X-Token") != TOKEN:
             return self.send(401, {"error": "bad token"})
         if method == "POST" and u.path == "/api/run":
@@ -339,7 +334,7 @@ def main():
     with db() as c:  # a restart interrupts whatever was running
         c.execute("UPDATE runs SET status='failed', error='service restarted mid-run', stage=NULL WHERE status='running'")
     threading.Thread(target=scheduler, daemon=True).start()
-    log(f"whatif listening on {HOST}:{PORT}; productions at " + ", ".join(f"{s} {m} (upload {u})" for s, (m, u) in SLOTS.items()))
+    log(f"gimana jadinya listening on {HOST}:{PORT}; productions at " + ", ".join(f"{s} {m} (upload {u})" for s, (m, u) in SLOTS.items()))
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()
 
 

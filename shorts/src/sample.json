@@ -1,0 +1,734 @@
+{
+ "title": "Kalau Bumi Punya Cincin seperti Saturnus?",
+ "fps": 30,
+ "frames": 1361,
+ "scenes": [
+  {
+   "text": "Gimana jadinya kalau Bumi punya cincin raksasa seperti Saturnus?",
+   "visual": {
+    "type": "globe",
+    "mode": "spin",
+    "stamp": "BUMI BERCINCIN"
+   },
+   "cue": "cincin",
+   "sfx": "sparkle",
+   "audio": "vo00.mp3",
+   "audioFrom": 1,
+   "from": 0,
+   "frames": 108,
+   "words": [
+    {
+     "w": "Gimana",
+     "s": 2,
+     "e": 12
+    },
+    {
+     "w": "jadinya",
+     "s": 12,
+     "e": 25
+    },
+    {
+     "w": "kalau",
+     "s": 25,
+     "e": 32
+    },
+    {
+     "w": "Bumi",
+     "s": 32,
+     "e": 39
+    },
+    {
+     "w": "punya",
+     "s": 39,
+     "e": 46
+    },
+    {
+     "w": "cincin",
+     "s": 46,
+     "e": 54
+    },
+    {
+     "w": "raksasa",
+     "s": 54,
+     "e": 68
+    },
+    {
+     "w": "seperti",
+     "s": 68,
+     "e": 76
+    },
+    {
+     "w": "Saturnus?",
+     "s": 76,
+     "e": 94
+    }
+   ]
+  },
+  {
+   "text": "Cincin itu melingkari khatulistiwa, tepat di atas kepala orang Indonesia.",
+   "visual": {
+    "type": "icon",
+    "emoji": "🪐",
+    "motion": "pop",
+    "stamp": "DI ATAS INDONESIA"
+   },
+   "cue": "khatulistiwa",
+   "sfx": "pop",
+   "audio": "vo01.mp3",
+   "audioFrom": 2,
+   "from": 108,
+   "frames": 122,
+   "words": [
+    {
+     "w": "Cincin",
+     "s": 2,
+     "e": 9
+    },
+    {
+     "w": "itu",
+     "s": 9,
+     "e": 15
+    },
+    {
+     "w": "melingkari",
+     "s": 15,
+     "e": 25
+    },
+    {
+     "w": "khatulistiwa,",
+     "s": 25,
+     "e": 49
+    },
+    {
+     "w": "tepat",
+     "s": 58,
+     "e": 66
+    },
+    {
+     "w": "di",
+     "s": 66,
+     "e": 68
+    },
+    {
+     "w": "atas",
+     "s": 68,
+     "e": 75
+    },
+    {
+     "w": "kepala",
+     "s": 75,
+     "e": 82
+    },
+    {
+     "w": "orang",
+     "s": 82,
+     "e": 88
+    },
+    {
+     "w": "Indonesia.",
+     "s": 88,
+     "e": 109
+    }
+   ]
+  },
+  {
+   "text": "Anehnya, dari Indonesia cincin itu cuma terlihat seperti garis tipis membelah langit.",
+   "visual": {
+    "type": "versus",
+    "left": {
+     "emoji": "🌈",
+     "label": "Jauh dari ekuator"
+    },
+    "right": {
+     "emoji": "➖",
+     "label": "Indonesia"
+    },
+    "stamp": "GARIS TIPIS"
+   },
+   "cue": "garis",
+   "sfx": "whoosh",
+   "audio": "vo02.mp3",
+   "audioFrom": 2,
+   "from": 230,
+   "frames": 138,
+   "words": [
+    {
+     "w": "Anehnya,",
+     "s": 2,
+     "e": 20
+    },
+    {
+     "w": "dari",
+     "s": 28,
+     "e": 34
+    },
+    {
+     "w": "Indonesia",
+     "s": 34,
+     "e": 45
+    },
+    {
+     "w": "cincin",
+     "s": 45,
+     "e": 53
+    },
+    {
+     "w": "itu",
+     "s": 53,
+     "e": 61
+    },
+    {
+     "w": "cuma",
+     "s": 61,
+     "e": 66
+    },
+    {
+     "w": "terlihat",
+     "s": 66,
+     "e": 77
+    },
+    {
+     "w": "seperti",
+     "s": 77,
+     "e": 86
+    },
+    {
+     "w": "garis",
+     "s": 86,
+     "e": 93
+    },
+    {
+     "w": "tipis",
+     "s": 93,
+     "e": 103
+    },
+    {
+     "w": "membelah",
+     "s": 103,
+     "e": 111
+    },
+    {
+     "w": "langit.",
+     "s": 111,
+     "e": 124
+    }
+   ]
+  },
+  {
+   "text": "Cincinnya terbuat dari batu, karena es akan menguap sedekat ini dengan Matahari.",
+   "visual": {
+    "type": "icon",
+    "emoji": "🪨",
+    "motion": "shake",
+    "stamp": "CINCIN BATU"
+   },
+   "cue": "batu",
+   "sfx": "hit",
+   "audio": "vo03.mp3",
+   "audioFrom": 2,
+   "from": 368,
+   "frames": 134,
+   "words": [
+    {
+     "w": "Cincinnya",
+     "s": 2,
+     "e": 14
+    },
+    {
+     "w": "terbuat",
+     "s": 14,
+     "e": 23
+    },
+    {
+     "w": "dari",
+     "s": 23,
+     "e": 29
+    },
+    {
+     "w": "batu,",
+     "s": 29,
+     "e": 44
+    },
+    {
+     "w": "karena",
+     "s": 51,
+     "e": 60
+    },
+    {
+     "w": "es",
+     "s": 60,
+     "e": 66
+    },
+    {
+     "w": "akan",
+     "s": 66,
+     "e": 72
+    },
+    {
+     "w": "menguap",
+     "s": 72,
+     "e": 80
+    },
+    {
+     "w": "sedekat",
+     "s": 80,
+     "e": 89
+    },
+    {
+     "w": "ini",
+     "s": 89,
+     "e": 96
+    },
+    {
+     "w": "dengan",
+     "s": 96,
+     "e": 103
+    },
+    {
+     "w": "Matahari.",
+     "s": 103,
+     "e": 121
+    }
+   ]
+  },
+  {
+   "text": "Bayangannya jatuh ke belahan Bumi yang sedang musim dingin, jadi makin beku!",
+   "visual": {
+    "type": "globe",
+    "mode": "frozen",
+    "stamp": "MAKIN BEKU"
+   },
+   "cue": "beku",
+   "sfx": "sub-drop",
+   "audio": "vo04.mp3",
+   "audioFrom": 1,
+   "from": 502,
+   "frames": 123,
+   "words": [
+    {
+     "w": "Bayangannya",
+     "s": 2,
+     "e": 19
+    },
+    {
+     "w": "jatuh",
+     "s": 19,
+     "e": 27
+    },
+    {
+     "w": "ke",
+     "s": 27,
+     "e": 29
+    },
+    {
+     "w": "belahan",
+     "s": 29,
+     "e": 37
+    },
+    {
+     "w": "Bumi",
+     "s": 37,
+     "e": 45
+    },
+    {
+     "w": "yang",
+     "s": 45,
+     "e": 48
+    },
+    {
+     "w": "sedang",
+     "s": 48,
+     "e": 55
+    },
+    {
+     "w": "musim",
+     "s": 55,
+     "e": 62
+    },
+    {
+     "w": "dingin,",
+     "s": 62,
+     "e": 75
+    },
+    {
+     "w": "jadi",
+     "s": 82,
+     "e": 90
+    },
+    {
+     "w": "makin",
+     "s": 90,
+     "e": 97
+    },
+    {
+     "w": "beku!",
+     "s": 97,
+     "e": 109
+    }
+   ]
+  },
+  {
+   "text": "Satelit yang mengorbit di dalam cincin bisa hancur tertabrak bebatuan.",
+   "visual": {
+    "type": "fly",
+    "emojis": [
+     "🛰️",
+     "📡"
+    ],
+    "direction": "right",
+    "ground": false,
+    "stamp": "TABRAKAN!"
+   },
+   "cue": "hancur",
+   "sfx": "metal",
+   "audio": "vo05.mp3",
+   "audioFrom": 1,
+   "from": 625,
+   "frames": 110,
+   "words": [
+    {
+     "w": "Satelit",
+     "s": 2,
+     "e": 14
+    },
+    {
+     "w": "yang",
+     "s": 14,
+     "e": 17
+    },
+    {
+     "w": "mengorbit",
+     "s": 17,
+     "e": 28
+    },
+    {
+     "w": "di",
+     "s": 28,
+     "e": 31
+    },
+    {
+     "w": "dalam",
+     "s": 31,
+     "e": 37
+    },
+    {
+     "w": "cincin",
+     "s": 37,
+     "e": 48
+    },
+    {
+     "w": "bisa",
+     "s": 48,
+     "e": 54
+    },
+    {
+     "w": "hancur",
+     "s": 54,
+     "e": 63
+    },
+    {
+     "w": "tertabrak",
+     "s": 63,
+     "e": 77
+    },
+    {
+     "w": "bebatuan.",
+     "s": 77,
+     "e": 96
+    }
+   ]
+  },
+  {
+   "text": "Tapi ini bukan khayalan. Menurut perkiraan ilmuwan, Bumi pernah punya cincin 466 juta tahun lalu!",
+   "visual": {
+    "type": "number",
+    "value": 466000000.0,
+    "unit": "tahun lalu",
+    "label": "Bumi bercincin",
+    "emoji": "🪐",
+    "stamp": "MUNGKIN PERNAH"
+   },
+   "cue": "pernah",
+   "sfx": "boom",
+   "audio": "vo06.mp3",
+   "audioFrom": 1,
+   "from": 735,
+   "frames": 204,
+   "words": [
+    {
+     "w": "Tapi",
+     "s": 2,
+     "e": 9
+    },
+    {
+     "w": "ini",
+     "s": 9,
+     "e": 16
+    },
+    {
+     "w": "bukan",
+     "s": 16,
+     "e": 23
+    },
+    {
+     "w": "khayalan.",
+     "s": 23,
+     "e": 41
+    },
+    {
+     "w": "Menurut",
+     "s": 64,
+     "e": 73
+    },
+    {
+     "w": "perkiraan",
+     "s": 73,
+     "e": 83
+    },
+    {
+     "w": "ilmuwan,",
+     "s": 83,
+     "e": 99
+    },
+    {
+     "w": "Bumi",
+     "s": 107,
+     "e": 113
+    },
+    {
+     "w": "pernah",
+     "s": 113,
+     "e": 120
+    },
+    {
+     "w": "punya",
+     "s": 120,
+     "e": 126
+    },
+    {
+     "w": "cincin",
+     "s": 126,
+     "e": 136
+    },
+    {
+     "w": "466",
+     "s": 136,
+     "e": 166
+    },
+    {
+     "w": "juta",
+     "s": 166,
+     "e": 172
+    },
+    {
+     "w": "tahun",
+     "s": 172,
+     "e": 178
+    },
+    {
+     "w": "lalu!",
+     "s": 178,
+     "e": 190
+    }
+   ]
+  },
+  {
+   "text": "Diduga asteroid hancur dekat Bumi jadi cincin, dan jejaknya 21 kawah dekat khatulistiwa.",
+   "visual": {
+    "type": "timeline",
+    "steps": [
+     {
+      "time": "Awal",
+      "emoji": "☄️",
+      "label": "Asteroid hancur",
+      "at": "hancur"
+     },
+     {
+      "time": "Lalu",
+      "emoji": "💫",
+      "label": "Jadi cincin",
+      "at": "cincin"
+     },
+     {
+      "time": "Jejaknya",
+      "emoji": "🕳️",
+      "label": "21 kawah",
+      "at": "kawah"
+     }
+    ]
+   },
+   "cue": "kawah",
+   "sfx": "drop",
+   "audio": "vo07.mp3",
+   "audioFrom": 2,
+   "from": 938,
+   "frames": 164,
+   "words": [
+    {
+     "w": "Diduga",
+     "s": 2,
+     "e": 11
+    },
+    {
+     "w": "asteroid",
+     "s": 11,
+     "e": 23
+    },
+    {
+     "w": "hancur",
+     "s": 23,
+     "e": 33
+    },
+    {
+     "w": "dekat",
+     "s": 33,
+     "e": 40
+    },
+    {
+     "w": "Bumi",
+     "s": 40,
+     "e": 47
+    },
+    {
+     "w": "jadi",
+     "s": 47,
+     "e": 53
+    },
+    {
+     "w": "cincin,",
+     "s": 53,
+     "e": 69
+    },
+    {
+     "w": "dan",
+     "s": 77,
+     "e": 83
+    },
+    {
+     "w": "jejaknya",
+     "s": 83,
+     "e": 96
+    },
+    {
+     "w": "21",
+     "s": 96,
+     "e": 111
+    },
+    {
+     "w": "kawah",
+     "s": 111,
+     "e": 120
+    },
+    {
+     "w": "dekat",
+     "s": 120,
+     "e": 127
+    },
+    {
+     "w": "khatulistiwa.",
+     "s": 127,
+     "e": 150
+    }
+   ]
+  },
+  {
+   "text": "Cincin itu diduga ikut memicu zaman es! Kalau Bumi bercincin lagi, kamu mau lihat? Tulis di komentar!",
+   "visual": {
+    "type": "outro"
+   },
+   "cue": "komentar",
+   "sfx": "question",
+   "audio": "vo08.mp3",
+   "audioFrom": 1,
+   "from": 1102,
+   "frames": 228,
+   "words": [
+    {
+     "w": "Cincin",
+     "s": 2,
+     "e": 11
+    },
+    {
+     "w": "itu",
+     "s": 11,
+     "e": 18
+    },
+    {
+     "w": "diduga",
+     "s": 18,
+     "e": 27
+    },
+    {
+     "w": "ikut",
+     "s": 27,
+     "e": 33
+    },
+    {
+     "w": "memicu",
+     "s": 33,
+     "e": 41
+    },
+    {
+     "w": "zaman",
+     "s": 41,
+     "e": 50
+    },
+    {
+     "w": "es!",
+     "s": 50,
+     "e": 63
+    },
+    {
+     "w": "Kalau",
+     "s": 86,
+     "e": 93
+    },
+    {
+     "w": "Bumi",
+     "s": 93,
+     "e": 100
+    },
+    {
+     "w": "bercincin",
+     "s": 100,
+     "e": 113
+    },
+    {
+     "w": "lagi,",
+     "s": 113,
+     "e": 126
+    },
+    {
+     "w": "kamu",
+     "s": 134,
+     "e": 140
+    },
+    {
+     "w": "mau",
+     "s": 140,
+     "e": 145
+    },
+    {
+     "w": "lihat?",
+     "s": 145,
+     "e": 160
+    },
+    {
+     "w": "Tulis",
+     "s": 183,
+     "e": 193
+    },
+    {
+     "w": "di",
+     "s": 193,
+     "e": 196
+    },
+    {
+     "w": "komentar!",
+     "s": 196,
+     "e": 215
+    }
+   ]
+  }
+ ]
+}

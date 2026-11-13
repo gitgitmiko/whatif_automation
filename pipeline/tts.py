@@ -58,16 +58,24 @@ def spoken_form(text, extra=()):
     return text
 
 
-async def synth(text, mp3, rate=RATE, pitch="+0Hz", volume="+0%"):
-    words = []
-    with open(mp3, "wb") as f:
-        async for c in edge_tts.Communicate(text, VOICE, rate=rate, pitch=pitch, volume=volume,
-                                            boundary="WordBoundary").stream():
-            if c["type"] == "audio":
-                f.write(c["data"])
-            elif c["type"] == "WordBoundary":
-                words.append((c["text"], c["offset"] / 1e7, (c["offset"] + c["duration"]) / 1e7))
-    return words
+async def synth(text, mp3, rate=RATE, pitch="+0Hz", volume="+0%", tries=5):
+    # Microsoft's server now and then stalls on one request (socket timeout, no audio); a moment later it answers.
+    for attempt in range(tries):
+        words = []
+        try:
+            with open(mp3, "wb") as f:
+                async for c in edge_tts.Communicate(text, VOICE, rate=rate, pitch=pitch, volume=volume,
+                                                    boundary="WordBoundary").stream():
+                    if c["type"] == "audio":
+                        f.write(c["data"])
+                    elif c["type"] == "WordBoundary":
+                        words.append((c["text"], c["offset"] / 1e7, (c["offset"] + c["duration"]) / 1e7))
+            return words
+        except Exception as e:  # noqa: BLE001 - aiohttp and edge-tts raise several kinds for the same hiccup
+            if attempt == tries - 1:
+                raise
+            log(f"edge-tts failed ({type(e).__name__}: {str(e)[:120]}), retrying in {10 * (attempt + 1)} s")
+            await asyncio.sleep(10 * (attempt + 1))
 
 
 def align(tokens, spoken):
