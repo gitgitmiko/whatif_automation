@@ -4,19 +4,23 @@ import {
 } from 'remotion';
 import {Captions} from './Captions';
 import {Stars, VISUALS, Visual, Word, cueFrame} from './visuals';
+import {Hero, HeroContext, Pov, PovOutro, THEMES} from './hero';
+import {ImageScene, Label, SoftCaptions, TopTag, XFADE} from './scene3d';
 
 export type Scene = {
   text: string; visual: Visual; cue?: string; sfx?: string; audio: string; audioFrom: number;
-  from: number; frames: number; words: Word[];
+  from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
 };
-export type ShortProps = {title: string; fps: number; frames: number; scenes: Scene[]};
+export type ShortProps = {title: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string};
 
-const SceneView: React.FC<{scene: Scene}> = ({scene}) => {
+const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const V = VISUALS[scene.visual.type] ?? VISUALS.icon;
+  const t = scene.visual.type;
+  const V = t === 'pov' ? Pov : t === 'outro' && pov ? PovOutro : VISUALS[t] ?? VISUALS.icon;
   // Every scene punches in, then drifts slowly closer: the camera never sits still.
-  const enter = spring({frame, fps, config: {damping: 14, stiffness: 160}});
+  // The opening scene is already on screen at frame 0: the first frame is what decides the swipe.
+  const enter = scene.from === 0 ? 1 : spring({frame, fps, config: {damping: 14, stiffness: 160}});
   const scale = interpolate(enter, [0, 1], [1.25, 1]) * interpolate(frame, [0, scene.frames], [1, 1.06]);
   const exit = interpolate(frame, [scene.frames - 6, scene.frames], [1, 0], {extrapolateLeft: 'clamp'});
   return (
@@ -46,13 +50,45 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-export const Short: React.FC<ShortProps> = ({title, scenes, frames}) => {
+const Short3D: React.FC<ShortProps> = ({title, scenes}) => (
+  <AbsoluteFill style={{background: '#000'}}>
+    {scenes.map((s, i) => {
+      const lead = i ? XFADE : 0;  // each picture dissolves in over the end of the one before
+      return (
+        <Sequence key={`img${i}`} from={s.from - lead} durationInFrames={s.frames + lead + (i < scenes.length - 1 ? 0 : 30)}>
+          <ImageScene scene={s} frames={s.frames + lead} lead={lead} />
+        </Sequence>
+      );
+    })}
+    {scenes.map((s, i) => (
+      <Sequence key={i} from={s.from} durationInFrames={s.frames} name={`${i} ${s.camera ?? ''}`}>
+        <Label scene={s} />
+        <SoftCaptions words={s.words} />
+        <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />
+        {i > 0 && <Audio src={staticFile('sfx/whoosh.wav')} volume={0.15} />}
+        {s.sfx && (
+          <Sequence from={Math.max(cueFrame(s.words, s.cue) - 2, 0)}>
+            <Audio src={staticFile(`sfx/${s.sfx}.wav`)} volume={0.4} />
+          </Sequence>
+        )}
+      </Sequence>
+    ))}
+    <TopTag title={title} />
+  </AbsoluteFill>
+);
+
+export const Short: React.FC<ShortProps> = (props) => {
+  const {title, scenes, frames, hero, theme} = props;
+  if (props.style === '3d') return <Short3D {...props} />;
+  const pov = Boolean(hero?.emoji);
   return (
-    <AbsoluteFill style={{background: 'radial-gradient(circle at 50% 40%, #1d2b64 0%, #0b0f2a 60%, #05060f 100%)'}}>
-      <Stars />
+    <HeroContext.Provider value={hero ?? {}}>
+    <AbsoluteFill style={{background: pov ? THEMES[theme ?? ''] ?? THEMES.kota
+      : 'radial-gradient(circle at 50% 40%, #1d2b64 0%, #0b0f2a 60%, #05060f 100%)'}}>
+      {pov ? <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 70%, rgba(255,255,255,.12), transparent 55%)'}} /> : <Stars />}
       {scenes.map((s, i) => (
         <Sequence key={i} from={s.from} durationInFrames={s.frames} name={`${i} ${s.visual.type}`}>
-          <SceneView scene={s} />
+          <SceneView scene={s} pov={pov} />
           <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />
           {i > 0 && <Audio src={staticFile('sfx/whoosh.wav')} volume={0.35} />}
           {s.sfx && (
@@ -64,5 +100,6 @@ export const Short: React.FC<ShortProps> = ({title, scenes, frames}) => {
       ))}
       <Header title={title} total={frames} />
     </AbsoluteFill>
+    </HeroContext.Provider>
   );
 };

@@ -1,12 +1,16 @@
 """One "Gimana Jadinya?" Short, start to finish, into runs/<id>/:
 
-  naskah  Claude (with web search) picks a fresh "gimana jadinya kalau…" question and writes the narration, scene by
-          scene, choosing each scene's visual from the Remotion library in src/visuals.tsx      -> script.draft.json
+  naskah  Claude (with web search) picks a fresh "gimana jadinya kalau kamu jadi …" (a machine, object, animal…) and
+          writes a point-of-view narration, scene by scene: the hero (src/hero.tsx) with a mood and a speech bubble,
+          or a fact visual from the Remotion library in src/visuals.tsx                        -> script.draft.json
   cek     a second Claude pass checks every claim and number on the web and fixes them        -> script.json
   suara   edge-tts (Ardi) reads each scene; its word timings drive captions and cues          -> vo*.mp3, props.json
   render  Remotion draws the 1080x1920 video                                                   -> final.mp4
 
-  .venv/bin/python shorts/produce.py <id> [--script file.json]   (--script skips naskah and cek)
+  .venv/bin/python shorts/produce.py <id> [--script file.json] [--topic "mesin ATM"] [--idea ideas.json slot] [--style 3d]
+      --script skips naskah and cek; --topic fixes what "kamu" becomes instead of letting the writer pick;
+      --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
+      3D render moved by the camera (src/scene3d.tsx) instead of the cartoon hero
 """
 import asyncio, json, re, shutil, sqlite3, subprocess, sys, urllib.parse, urllib.request
 from pathlib import Path
@@ -27,9 +31,13 @@ SFX = {
     "bell": "lonceng", "gong": "gong", "glass": "kaca pecah", "drop": "jatuh", "metal": "logam", "machine": "mesin",
     "weird": "aneh",
 }
-TYPES = {"globe", "icon", "gauge", "bars", "versus", "fly", "rise", "swarm", "timeline", "thermo", "number", "wind", "outro"}
+TYPES = {"pov", "globe", "icon", "gauge", "bars", "versus", "fly", "rise", "swarm", "timeline", "thermo", "number", "wind", "outro"}
+
+MOODS = ["happy", "shock", "tired", "angry", "sad", "dizzy", "love", "smug", "scared", "proud"]
+THEMES = ["kota", "malam", "ruangan", "alam", "dapur", "laut"]
 
 LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF BESAR otomatis, buat SINGKAT):
+- {"type":"pov","mood":"happy|shock|tired|angry|sad|dizzy|love|smug|scared|proud","say":"...","motion":"idle|shake|jump|spin|shiver|tilt","props":["🧍","💳"],"props_motion":"around|rain|queue|burst|in|hit","stamp":"..."}  SANG TOKOH (benda yang kamu perankan, dari field "hero") digambar besar dengan wajah dan ekspresi mood. say = isi hati/ucapan tokoh di gelembung bicara, maks 5 kata, lucu, BUKAN pengulangan narasi (boleh kosong). motion terjadi di kata cue (shake = terguncang, jump = melompat kaget, spin = berputar, shiver = gemetar terus, tilt = miring lesu). props = 0-4 emoji: around = mengelilingi, queue = antre di depan, rain = berjatuhan dari atas, burst = menyembur keluar dari tokoh di kata cue (uang keluar dari ATM), in = melesat masuk ke tokoh di kata cue (kartu masuk, koin dimasukkan), hit = menghantam tokoh dari samping tepat di kata cue (tendangan, linggis, bola). Pilih props dan motion yang MEMPERAGAKAN kalimatnya, bukan hiasan.
 - {"type":"globe","mode":"spin|stop|night|hot|frozen","stamp":"..."}  Bumi animasi. stop = berputar lalu berhenti mendadak di kata cue; night = setengah gelap dengan Matahari; hot = memerah membara; frozen = membeku putih.
 - {"type":"icon","emoji":"🦖","motion":"pop|shake|float|spin|grow|shrink|explode","stamp":"..."}  satu emoji besar. explode = meledak di kata cue; grow/shrink = membesar/mengecil sampai kata cue.
 - {"type":"gauge","value":1660,"unit":"km/jam","label":"Jakarta","max":2000}  speedometer naik ke value di kata cue.
@@ -42,40 +50,136 @@ LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF
 - {"type":"thermo","value":60,"unit":"°C","min":0,"max":80,"label":"Suhu Jakarta","stamp":"..."}  termometer naik ke value di kata cue.
 - {"type":"number","value":8000000000,"unit":"orang","label":"...","emoji":"🧍","stamp":"..."}  satu angka besar menghitung naik.
 - {"type":"wind","emoji":"🌴","stamp":"..."}  angin kencang menerpa sesuatu.
-- {"type":"outro"}  WAJIB untuk adegan terakhir: tanda tanya + ajakan komentar.
-"stamp" opsional, maks 3 kata / 18 huruf, menegaskan momen di kata cue (contoh "STOP!", "3× LEBIH KENCANG", "TSUNAMI RAKSASA"). Emoji harus emoji Unicode standar yang umum. Variasikan jenis visual; jangan memakai jenis yang sama lebih dari 2 kali."""
+"stamp" opsional, maks 3 kata / 18 huruf, menegaskan momen di kata cue (contoh "STOP!", "3× LEBIH KENCANG", "TSUNAMI RAKSASA"). Emoji harus emoji Unicode standar yang umum. Tokoh adalah bintangnya: kira-kira separuh adegan memakai "pov" (moodnya berganti-ganti mengikuti cerita), sisanya visual fakta yang mendukung angka. Jenis selain pov jangan dipakai lebih dari 2 kali."""
 
-WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?" (tagline: Pertanyaan gila. Jawaban ilmiah.). Penonton: orang Indonesia umum, remaja sampai dewasa. Setiap video menjawab SATU pertanyaan "gimana jadinya kalau…" yang mengejutkan dengan sains yang BENAR, dalam animasi grafis 35-50 detik.
+WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video mengajak penonton membayangkan "gimana jadinya kalau KAMU jadi <sesuatu>", lalu menjalani hidup sebagai benda/makhluk itu, penuh fakta nyata yang mengejutkan, dalam animasi grafis 35-50 detik. Penonton: orang Indonesia umum, remaja sampai dewasa.
 
-1. Pilih topik baru: skenario hipotetis yang bikin penasaran dan bisa dijawab dengan fisika/biologi/astronomi/geografi/teknologi (contoh: Bumi berhenti berputar, semua orang melompat bersamaan, Bulan hilang, manusia berhenti tidur, internet mati sedunia). Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan judul yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata, dan hal sadis.
-2. Riset dengan pencarian web: pastikan setiap angka dan klaim benar menurut sumber tepercaya (NASA, jurnal, ensiklopedia, universitas). Kalau sesuatu masih teori, katakan "menurut perkiraan ilmuwan".
-3. Tulis narasi Bahasa Indonesia santai (pakai "kamu"), total 95-125 kata, dalam 7-10 adegan, tiap adegan 6-20 kata. Adegan pertama WAJIB diawali "Gimana jadinya kalau" lalu pertanyaannya, sebagai hook. Lalu eskalasi akibat demi akibat, makin dahsyat, ditutup fakta paling mengejutkan. Adegan terakhir (visual outro) menutup singkat lalu bertanya ke penonton dan memuat "Tulis di komentar!".
-4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "km/jam", "derajat Celsius", "persen". Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
-5. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong).
+1. Pilih SATU "sesuatu" yang nyeleneh tapi akrab: mesin dan benda sehari-hari (mesin ATM, vending machine, lift, eskalator, lampu merah, rice cooker, mesin cuci, kulkas, uang koin 500, kasur hotel, tiang listrik, galon, colokan, gerobak bakso, kartu e-toll, satelit), hewan kecil (nyamuk, semut, kecoak, cicak), atau bagian tubuh (lidah, gigi geraham). Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata, hal jorok, dan hal sadis.
+2. Riset dengan pencarian web: cari 4-6 fakta NYATA dan mengejutkan tentang benda itu (cara kerjanya, angka, sejarah, kejadian yang dialaminya setiap hari, terutama di Indonesia). Setiap angka dan klaim harus benar menurut sumber tepercaya (bank sentral, produsen, lembaga resmi, jurnal, ensiklopedia, media besar). Kalau angka berupa perkiraan, katakan "sekitar" atau "diperkirakan".
+3. Tulis narasi Bahasa Indonesia santai (pakai "kamu", sudut pandang si benda), total 70-100 kata (30-40 detik), dalam 6-8 adegan, tiap adegan 5-18 kata. Ikuti pola Shorts edukasi paling laris (Zack D. Films, median 10 juta views):
+   a. KALIMAT PERTAMA LANGSUNG DI TENGAH AKSI. Judul "Kalau kamu jadi ..." sudah tampil di layar sejak detik pertama, jadi narasi TIDAK BOLEH membuka dengan "Gimana jadinya kalau", pertanyaan, salam, atau perkenalan. Buka dengan momen paling dramatis atau aneh yang SEDANG terjadi padamu sebagai benda itu, maksimal 14 kata, konkret dan bisa digambar, dan HARUS mengandung konflik: bahaya, rasa sakit, serangan, kejadian aneh pada tubuhmu, atau angka yang tidak masuk akal. Suasana biasa ("antrean panjang", "kamu bangun pagi") BUKAN hook. Tulis dulu 5 kandidat di "hook_candidates", lalu pakai yang paling bikin orang berhenti scroll sebagai kalimat pertama dan bangun cerita dari situ. Contoh pola: "Kartu ketiga malam ini nyangkut di mulutmu, dan pemiliknya mulai menendangmu." / "Jam 3 pagi, seseorang mencongkel wajahmu pakai linggis." / "Tetes darah pertama masuk ke perutmu, dan berat badanmu langsung naik tiga kali lipat."
+   b. Lalu jelaskan KENAPA itu terjadi dengan fakta nyata ("Soalnya...", "Ternyata..."), satu rantai sebab-akibat, BUKAN daftar fakta yang dilompat-lompat. Setiap adegan menyambung ke adegan berikutnya dengan "Lalu", "Tapi", "Makanya", "Masalahnya".
+   c. Di tengah, satu belokan: "Tapi ada satu masalah..." atau fakta yang membalik dugaan penonton.
+   d. Tutup dengan punchline atau fakta paling mengejutkan, lalu BERHENTI. Tanpa ajakan komentar, tanpa "kamu mau jadi apa", tanpa kesimpulan. Idealnya kalimat terakhir menyambung lagi ke kalimat pertama sehingga video terasa berulang (loop).
+   e. Humor dari situasi dan sudut pandang benda, khas Indonesia (tanggal gajian, mati lampu, mudik), bukan mengejek orang.
+4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "kilogram", "derajat Celsius", "persen", "rupiah" (Rp 100 ribu ditulis "100 ribu rupiah"). Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
+5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
+6. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong).
 
 {LIBRARY}
 
 Balas HANYA JSON:
-{{"title":"Kalau ...?" (maks 42 huruf, tampil di bawah label GIMANA JADINYA?),
- "yt_title":"Gimana Jadinya Kalau ...?" (maks 70 huruf, memancing klik tapi jujur),
+{{"title":"Kalau Kamu Jadi ...?" (maks 42 huruf, tampil di bawah label GIMANA JADINYA? sepanjang video),
+ "yt_title":"..." (maks 70 huruf: pernyataan yang memancing rasa penasaran, jujur, diawali "Kalau Kamu Jadi <benda>," atau "Jadi <benda>:", diakhiri satu emoji, contoh "Kalau Kamu Jadi Mesin ATM, Kartu Ini Musuh Terbesarmu 😨"),
  "description":"2-3 kalimat ringkasan menarik",
  "tags":["8-12 tag"],
  "sources":["2-4 URL sumber yang benar-benar kamu pakai"],
+ "hook_candidates":["5 kandidat kalimat pertama"],
+ "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
+ "theme":"...",
  "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"..."}}]}}"""
 
-CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Jadinya?". Kamu menerima naskah JSON.
+CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Jadinya?" (format point of view: "gimana jadinya kalau kamu jadi <sesuatu>"). Kamu menerima naskah JSON.
 1. Periksa SETIAP klaim dan angka di narasi DAN di visual dengan pencarian web ke sumber tepercaya. Perbaiki yang salah atau berlebihan; samakan angka di visual dengan narasi. Klaim spekulatif harus ditandai "menurut perkiraan ilmuwan" atau sejenisnya.
-2. Pastikan aturan: 7-10 adegan; total 95-125 kata; adegan pertama diawali "Gimana jadinya kalau"; adegan terakhir visual outro dan memuat "Tulis di komentar!"; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; visual sesuai daftar berikut.
+2. Pastikan aturan: 6-8 adegan; total 70-100 kata; kalimat pertama langsung di tengah aksi dengan konflik (bahaya, sakit, serangan, keanehan; maks 14 kata, TIDAK diawali "Gimana jadinya", pertanyaan, atau perkenalan; kalau melanggar, tulis ulang kalimat pertamanya); adegan saling menyambung sebagai satu rantai sebab-akibat dengan satu belokan; penutup berhenti di punchline tanpa ajakan komentar atau pertanyaan ke penonton; kira-kira separuh adegan visual pov dengan mood yang berganti dan props yang memperagakan kalimat; "say" maks 5 kata dan tidak mengulang narasi; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; visual sesuai daftar berikut.
 
 {LIBRARY}
 
-3. Jangan mengubah topik. Pertahankan gaya santai. Perbarui "sources" dengan URL yang kamu pakai untuk memeriksa.
+3. Jangan mengubah topik, "hero", atau "theme". Pertahankan gaya santai dan lucu. Perbarui "sources" dengan URL yang kamu pakai untuk memeriksa.
 Balas HANYA JSON: {{"issues":["daftar yang kamu perbaiki, kosong kalau tidak ada"],"script":{{...naskah lengkap yang sudah diperbaiki, format sama...}}}}"""
+
+
+CAMERAS = ["push", "pull", "pan_left", "pan_right", "rise", "fall"]
+IMAGE_STYLE = ("Stylized 3D CGI render, not a photograph, vertical 9:16 composition with the subject centred and room "
+               "above and below. Clean studio lighting, soft shadows, smooth saturated colours, shallow depth of field, "
+               "simple uncluttered background, high-end science explainer animation style. No text, no letters, no "
+               "numbers, no logos, no watermark, no blood.")
+
+_RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik bendamu yang SAMA PERSIS dipakai di setiap prompt gambar yang menampilkannya, supaya bentuknya konsisten (contoh: "a tall red drink vending machine with a glass front, spiral coils of colourful bottles inside and a small keypad on the right"). Benda tampil realistis, TANPA wajah atau mata. Sudut pandang "kamu" cukup lewat narasi.
+6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau bendamu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis, tampak potongan/cutaway yang memperlihatkan isi benda, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong)."""
+
+WRITER_3D = WRITER_SYS.replace(WRITER_SYS[WRITER_SYS.index("5. \"hero\" menggambarkan"):WRITER_SYS.index("Balas HANYA JSON:")],
+                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items())) + "\n\n")
+WRITER_3D = WRITER_3D.replace("dalam animasi grafis 35-50 detik", "dalam animasi render 3D 30-40 detik")
+WRITER_3D = WRITER_3D.replace(""" "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
+ "theme":"...",
+ "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"..."}}]}}""".replace("{{", "{").replace("}}", "}"),
+ """ "hero_look":"...",
+ "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"..."}]}""")
+
+CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + (
+    "setiap adegan punya \"image\" (prompt bahasa Inggris yang memperagakan kalimatnya secara harfiah, memuat hero_look "
+    "kalau bendanya tampil, tanpa teks di gambar, tanpa darah), \"camera\" salah satu dari " + ", ".join(CAMERAS) +
+    ", \"label\" maks 12 huruf dan angkanya sama dengan narasi; tiap \"cue\" adalah kata yang ada persis di text "
+    "adegannya; angka pakai digit format Indonesia.\n\n3. Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
+    "santai dan lucu. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
+    "{\"issues\":[\"daftar yang kamu perbaiki, kosong kalau tidak ada\"],\"script\":{...naskah lengkap yang sudah "
+    "diperbaiki, format sama...}}")
+
+
+def tidy3d(s):
+    scenes = [x for x in s.get("scenes", []) if str(x.get("text", "")).strip() and str(x.get("image", "")).strip()]
+    if len(scenes) < 4:
+        raise ValueError(f"script has only {len(scenes)} scenes with a picture")
+    for i, x in enumerate(scenes):
+        if x.get("camera") not in CAMERAS:
+            x["camera"] = CAMERAS[i % 2]
+        if not x.get("label") or len(str(x["label"])) > 14:
+            x.pop("label", None)
+        spoken = [w.lower().strip(".,?!;:") for w in x["text"].split()]
+        cue = str(x.get("cue") or "").lower().strip(".,?!;:")
+        if cue and not any(w.startswith(cue) for w in spoken):
+            x.pop("cue", None)
+        if x.get("sfx") not in SFX:
+            x.pop("sfx", None)
+        x.pop("visual", None)
+    s["scenes"] = scenes
+    s["style"] = "3d"
+    s["title"] = str(s.get("title") or "")[:60]
+    s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
+    n = sum(len(x["text"].split()) for x in scenes)
+    log(f"script: {len(scenes)} scenes, {n} words, title {s['title']!r} (3d)")
+    return s
+
+
+def pictures(s, d, pub):
+    """One 9:16 render per scene through Google Flow (classic composer, the plan's daily image allowance)."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import images
+    images.ensure_display()
+    pf = d / "gflow-project.txt"
+    if not pf.exists():
+        r = images.gflow("project", "create", "--name", f"gimana-{d.name}", "--json", timeout=300)
+        out = json.loads(r.stdout[r.stdout.index("{"):]) if "{" in r.stdout else {}
+        if "project_id" not in out:
+            raise RuntimeError(f"gflow project create failed: {r.stdout[-300:]} {r.stderr[-300:]}")
+        pf.write_text(out["project_id"])
+    for attempt in range(3):
+        todo = [i for i in range(len(s["scenes"])) if not (pub / f"img{i:02}.jpg").exists()]
+        if not todo:
+            break
+        tmp = d / "tmp-img"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir()
+        (tmp / "p.txt").write_text("\n".join(f"{s['scenes'][i]['image'].strip()} {IMAGE_STYLE}".replace("\n", " ")
+                                             for i in todo) + "\n")
+        r = images.gflow("image", "t2i", "--prompts-file", tmp / "p.txt", "--aspect", "9:16", "--project",
+                         pf.read_text().strip(), "--out", tmp, timeout=1800)
+        (d / "gflow.log").open("a").write(r.stdout[-3000:] + r.stderr[-1500:] + "\n")
+        for n, i in enumerate(todo):
+            if (tmp / f"prompt_{n}_0.jpg").exists():
+                shutil.move(tmp / f"prompt_{n}_0.jpg", pub / f"img{i:02}.jpg")
+        log(f"pictures: {len(s['scenes']) - len([i for i in todo if not (pub / f'img{i:02}.jpg').exists()])}/{len(s['scenes'])}")
+    missing = [i for i in range(len(s["scenes"])) if not (pub / f"img{i:02}.jpg").exists()]
+    if missing:
+        raise RuntimeError(f"Flow made no picture for scenes {missing}; see {d / 'gflow.log'}")
+    for i, x in enumerate(s["scenes"]):
+        x["image"] = f"img{i:02}.jpg"
 
 
 def suggestions():
     out = []
-    for q in ("gimana jadinya kalau", "apa yang terjadi jika", "bagaimana jika bumi", "apa jadinya jika manusia"):
+    for q in ("gimana jadinya kalau kamu jadi", "pov jadi", "kalau kamu jadi", "fakta unik mesin"):
         try:
             u = "https://suggestqueries.google.com/complete/search?" + urllib.parse.urlencode(
                 {"client": "firefox", "ds": "yt", "hl": "id", "gl": "ID", "q": q})
@@ -102,7 +206,13 @@ def tidy(s):
         raise ValueError(f"script has only {len(scenes)} scenes")
     for i, x in enumerate(scenes):
         v = x.get("visual") if isinstance(x.get("visual"), dict) else {}
-        if v.get("type") not in TYPES or (v["type"] == "outro" and i != len(scenes) - 1):
+        if v.get("type") == "pov":
+            if v.get("mood") not in MOODS:
+                v["mood"] = "happy"
+            v["props"] = [str(e) for e in v.get("props") or []][:4]
+            if v.get("say") and len(str(v["say"])) > 34:
+                v.pop("say")
+        if v.get("type") not in TYPES or v["type"] == "outro":
             v = {"type": "icon", "emoji": v.get("emoji") or "🤔", "motion": "pop", "stamp": v.get("stamp")}
         for k in ("value", "max", "min"):
             if k in v:
@@ -126,13 +236,21 @@ def tidy(s):
             x.pop("cue", None)
         if x.get("sfx") not in SFX:
             x.pop("sfx", None)
-    scenes[-1]["visual"] = {"type": "outro"}
+    h = s.get("hero") if isinstance(s.get("hero"), dict) else {}
+    if not h.get("emoji"):
+        raise ValueError("script has no hero emoji")
+    h["body"] = "box" if h.get("body") == "box" else "emoji"
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", str(h.get("color") or "")):
+        h["color"] = "#2f7de1"
+    s["hero"] = h
+    if s.get("theme") not in THEMES:
+        s["theme"] = "kota"
     s["scenes"] = scenes
     s["title"] = str(s.get("title") or "")[:60]
     s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
     n = sum(len(x["text"].split()) for x in scenes)
-    if not scenes[0]["text"].lower().startswith("gimana jadinya kalau"):
-        log("warning: first scene does not open with 'Gimana jadinya kalau'")
+    if scenes[0]["text"].lower().startswith(("gimana jadinya", "bagaimana jika", "apa jadinya")):
+        log("warning: first scene opens with the question instead of the action")
     log(f"script: {len(scenes)} scenes, {n} words, title {s['title']!r}")
     return s
 
@@ -186,7 +304,7 @@ def voice(s, d, pub):
                        "words": [{"w": w["w"], "s": round((w["s"] - lead) * FPS), "e": round((w["e"] - lead) * FPS)}
                                  for w in words]})
         t += length
-    props = {"title": s["title"], "fps": FPS, "frames": round(t * FPS) + FPS, "scenes": scenes}
+    props = {"title": s["title"], "hero": s.get("hero"), "theme": s.get("theme"), "style": s.get("style"), "fps": FPS, "frames": round(t * FPS) + 6, "scenes": scenes}
     save(d / "props.json", props)
     log(f"voice: {t:.1f} s")
     return props
@@ -198,27 +316,41 @@ def render(d, pub):
                    timeout=1800)
 
 
-def main(rid, script_file=None):
+def main(rid, script_file=None, topic=None, idea=None, style=None):
     d = RUNS / rid
     d.mkdir(parents=True, exist_ok=True)
     if script_file:
-        s = tidy(load(script_file))
+        raw = load(script_file)
+        s = tidy3d(raw) if style == "3d" or raw.get("style") == "3d" else tidy(raw)
     else:
         print("STAGE naskah", flush=True)
         brief = {"judul_yang_sudah_pernah_dibuat": previous_titles(), "saran_pencarian_youtube": suggestions()}
-        draft = claude_json("opus", WRITER_SYS, json.dumps(brief, ensure_ascii=False), web=True)
+        if idea:
+            brief = {"topik_wajib": f"kamu jadi {idea['topic']}", "ide_dari_riset": {k: idea.get(k) for k in (
+                "angle", "hook", "facts", "inspired_by")}, "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
+            log(f"idea: kamu jadi {idea['topic']} | {idea.get('hook', '')}")
+        elif topic:
+            brief = {"topik_wajib": f"kamu jadi {topic}", "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
+        three = style == "3d"
+        draft = claude_json("opus", WRITER_3D if three else WRITER_SYS, json.dumps(brief, ensure_ascii=False), web=True)
         save(d / "script.draft.json", draft)
-        tidy(json.loads(json.dumps(draft)))  # fail early on a draft the checker could not save
+        fix = tidy3d if three else tidy
+        fix(json.loads(json.dumps(draft)))  # fail early on a draft the checker could not save
         print("STAGE cek", flush=True)
-        checked = claude_json("opus", CHECK_SYS, json.dumps(draft, ensure_ascii=False), web=True)
+        checked = claude_json("opus", CHECK_3D if three else CHECK_SYS, json.dumps(draft, ensure_ascii=False), web=True)
         for issue in checked.get("issues", []):
             log("fixed:", issue)
-        s = tidy(checked.get("script") or draft)
+        s = fix(checked.get("script") or draft)
     save(d / "script.json", s)
     print("STAGE suara", flush=True)
     pub = d / "public"
     pub.mkdir(exist_ok=True)
     shutil.copy(HERE / "public" / "Anton-Regular.ttf", pub)
+    shutil.copy(HERE / "public" / "Montserrat.ttf", pub)
+    if s.get("style") == "3d":
+        print("STAGE gambar", flush=True)
+        pictures(s, d, pub)
+        save(d / "script.json", s)
     shutil.copytree(HERE / "public" / "sfx", pub / "sfx", dirs_exist_ok=True)
     voice(s, d, pub)
     print("STAGE render", flush=True)
@@ -229,4 +361,9 @@ def main(rid, script_file=None):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    main(a[0], a[a.index("--script") + 1] if "--script" in a else None)
+    idea = None
+    if "--idea" in a:
+        k = a.index("--idea")
+        idea = next((i for i in load(a[k + 1])["ideas"] if i.get("slot") == a[k + 2]), None)
+    main(a[0], a[a.index("--script") + 1] if "--script" in a else None,
+         a[a.index("--topic") + 1] if "--topic" in a else None, idea, a[a.index("--style") + 1] if "--style" in a else None)

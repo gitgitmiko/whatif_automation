@@ -9,18 +9,18 @@
 
 ## Deskripsi channel
 
-Gimana jadinya kalau Bumi tiba-tiba berhenti berputar? Kalau semua orang melompat bersamaan? Kalau Matahari padam?
+Gimana jadinya kalau kamu jadi mesin ATM? Jadi vending machine? Jadi nyamuk, lampu merah, atau uang koin 500?
 
-Di sini kita bongkar pertanyaan "gimana jadinya kalau…" yang paling gila, lalu menjawabnya pakai sains beneran: angka, fakta, dan animasi singkat yang gampang dicerna dalam satu menit.
+Di sini kamu bertukar tempat dengan benda, mesin, dan makhluk di sekitarmu, lalu merasakan hidup dari sudut pandang mereka. Lucu, nyeleneh, tapi isinya fakta beneran, dalam animasi singkat kurang dari satu menit.
 
-Pertanyaan gila. Jawaban ilmiah.
+Jadi apa aja. Rasain sendiri.
 
-Punya pertanyaan "gimana jadinya kalau…"? Tulis di komentar, siapa tahu jadi video berikutnya!
+Mau lihat kamu jadi apa berikutnya? Tulis di komentar, siapa tahu jadi video berikutnya!
 
 ## Kata kunci channel
 
-gimana jadinya, gimana jadinya kalau, what if indonesia, bagaimana jika, apa yang terjadi jika, sains, fakta unik, fakta sains, edukasi, animasi, bumi, luar angkasa, shorts indonesia
+gimana jadinya, gimana jadinya kalau kamu jadi, pov, pov jadi benda, kalau kamu jadi, fakta unik, fakta menarik, animasi, edukasi, shorts indonesia
 
 ## Tagar default video
 
-#GimanaJadinya #WhatIf #Sains #FaktaUnik #Shorts
+#GimanaJadinya #POV #FaktaUnik #Shorts

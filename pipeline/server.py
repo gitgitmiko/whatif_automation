@@ -1,4 +1,5 @@
-"""The "Gimana Jadinya?" service: makes three animated Shorts a day (shorts/produce.py) on its own clock and serves
+"""The "Gimana Jadinya?" service: researches the day's three ideas at 06:00 (shorts/ideas.py), makes three animated
+Shorts a day from them (shorts/produce.py) on its own clock and serves
 them to n8n, which uploads them at their publishing time. Mirrors the KUISABON service's API so the same dashboard
 and n8n patterns work.
 
@@ -23,6 +24,8 @@ WIB = dt.timezone(dt.timedelta(hours=7))
 # slot -> (production starts, upload time). A Short takes 10-20 minutes to make (most of it Claude writing and
 # fact-checking); the rest of the hour and a half is room for a retry.
 SLOTS = {"pagi": ("08:30", "10:00"), "sore": ("13:30", "15:00"), "malam": ("18:30", "20:00")}
+IDEAS_AT = "06:00"  # shorts/ideas.py reads what is pulling views now and plans pagi, sore and malam
+IDEAS = ROOT / "data" / "ideas"
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
 SHORTS = ROOT / "shorts"
 PYTHON = ROOT / ".venv" / "bin" / "python"
@@ -30,7 +33,7 @@ KEEP_DAYS = 7
 PIPE = ROOT / "pipeline"
 DB = ROOT / "data" / "whatif.db"
 lock = threading.Lock()
-state = {"busy": None}
+state = {"busy": None, "ideas": None}  # ideas: when today's research last started
 
 
 def db():
@@ -64,12 +67,12 @@ def mark_rendered(rid, d, s):
     sources = "\n".join(f"- {u}" for u in s.get("sources", [])[:4])
     desc = (f"{s.get('description', '')}\n\n" + (f"Sumber:\n{sources}\n\n" if sources else "") +
             "Animasi dan narasi dibuat dengan bantuan AI; fakta dicek dari sumber di atas. Efek suara CC0 "
-            "(OpenGameArt, Kenney).\n\nPunya pertanyaan \"gimana jadinya kalau…\"? Tulis di komentar, siapa tahu jadi "
-            "video berikutnya!\n\n#GimanaJadinya #Shorts #Sains #FaktaUnik")
+            "(OpenGameArt, Kenney).\n\nMau tahu gimana jadinya kalau kamu jadi apa lagi? Tulis di komentar, siapa tahu jadi "
+            "video berikutnya!\n\n#GimanaJadinya #POV #Shorts #FaktaUnik")
     title = s["yt_title"]
     if len(title) + 8 <= 100:
         title += " #shorts"
-    tags = list(dict.fromkeys([*s.get("tags", []), "gimana jadinya", "shorts", "sains"]))[:15]
+    tags = list(dict.fromkeys([*s.get("tags", []), "gimana jadinya", "pov", "shorts", "fakta unik"]))[:15]
     dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
                                          "csv=p=0", d / "final.mp4"]))
     update(rid, status="rendered", stage=None, error=None, finished_at=now().isoformat(), data=json.dumps(
@@ -86,8 +89,12 @@ def produce(slot):
                   (rid, slot, "running", "naskah", now().isoformat()))
     state["busy"] = rid
     try:
+        ideas = IDEAS / f"{now():%Y-%m-%d}.json"
+        cmd = [PYTHON, SHORTS / "produce.py", rid]
+        if ideas.exists() and any(i.get("slot") == slot for i in load(ideas).get("ideas", [])):
+            cmd += ["--idea", ideas, slot]  # without today's research the writer picks a topic itself
         with open(d / "run.log", "w") as f:
-            subprocess.run([PYTHON, SHORTS / "produce.py", rid], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
+            subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
                            check=True, timeout=5400)
         s = load(d / "script.json")
         update(rid, topic=s["title"], title=s["yt_title"])
@@ -110,6 +117,25 @@ def start(slot):
     return True
 
 
+def research():
+    with open(ROOT / "data" / "ideas.log", "a") as f:
+        f.write(f"\n=== {now().isoformat()}\n")
+        f.flush()
+        r = subprocess.run([PYTHON, SHORTS / "ideas.py", now().date().isoformat()], stdout=f, stderr=subprocess.STDOUT,
+                           cwd=ROOT, timeout=3600)
+    log("ideas:", "ready" if r.returncode == 0 else f"failed ({r.returncode}), see data/ideas.log")
+
+
+def ideas_due(t):
+    """Today's research runs from 06:00, again 15 minutes after a failure, until the first production starts."""
+    start_at = t.replace(hour=int(IDEAS_AT[:2]), minute=int(IDEAS_AT[3:]), second=0, microsecond=0)
+    first = min(SLOTS.values())[0]
+    stop = t.replace(hour=int(first[:2]), minute=int(first[3:]), second=0, microsecond=0)
+    last = state["ideas"]
+    return (start_at <= t < stop and not (IDEAS / f"{t.date().isoformat()}.json").exists()
+            and ENV.get("PAUSE_PRODUCTION") != "1" and (last is None or t - last > dt.timedelta(minutes=15)))
+
+
 def todays(slot, day):
     with db() as c:
         return c.execute("SELECT status, finished_at FROM runs WHERE slot=? AND substr(started_at,1,10)=? "
@@ -121,6 +147,10 @@ def scheduler():
     upload. Also tidies runs older than a week."""
     while True:
         t = now()
+        if ideas_due(t):
+            state["ideas"] = t
+            log("scheduler: researching today's ideas")
+            threading.Thread(target=research, daemon=True).start()
         for slot, (make, up) in SLOTS.items():
             due = t.replace(hour=int(make[:2]), minute=int(make[3:]), second=0, microsecond=0)
             upload = t.replace(hour=int(up[:2]), minute=int(up[3:]), second=0, microsecond=0)
@@ -334,7 +364,7 @@ def main():
     with db() as c:  # a restart interrupts whatever was running
         c.execute("UPDATE runs SET status='failed', error='service restarted mid-run', stage=NULL WHERE status='running'")
     threading.Thread(target=scheduler, daemon=True).start()
-    log(f"gimana jadinya listening on {HOST}:{PORT}; productions at " + ", ".join(f"{s} {m} (upload {u})" for s, (m, u) in SLOTS.items()))
+    log(f"gimana jadinya listening on {HOST}:{PORT}; ideas at {IDEAS_AT}; productions at " + ", ".join(f"{s} {m} (upload {u})" for s, (m, u) in SLOTS.items()))
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()
 
 
