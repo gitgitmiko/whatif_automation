@@ -26,6 +26,7 @@ WIB = dt.timezone(dt.timedelta(hours=7))
 SLOTS = {"pagi": ("08:30", "10:00"), "sore": ("13:30", "15:00"), "malam": ("18:30", "20:00")}
 IDEAS_AT = "06:00"  # shorts/ideas.py reads what is pulling views now and plans pagi, sore and malam
 IDEAS = ROOT / "data" / "ideas"
+STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
 SHORTS = ROOT / "shorts"
 PYTHON = ROOT / ".venv" / "bin" / "python"
@@ -94,8 +95,17 @@ def produce(slot):
         if ideas.exists() and any(i.get("slot") == slot for i in load(ideas).get("ideas", [])):
             cmd += ["--idea", ideas, slot]  # without today's research the writer picks a topic itself
         with open(d / "run.log", "w") as f:
-            subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
-                           check=True, timeout=5400)
+            if now().date().isoformat() >= STYLE_3D_FROM:
+                try:
+                    subprocess.run(cmd + ["--style", "3d"], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
+                                   check=True, timeout=2700)
+                    cmd = None
+                except Exception as e:  # Flow down or out of quota: the same slot in the cartoon style still uploads
+                    f.write(f"\n3D production failed ({e}); falling back to the cartoon style\n")
+                    f.flush()
+                    log(rid, "3d failed, falling back to cartoon:", e)
+            if cmd:
+                subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, check=True, timeout=3600)
         s = load(d / "script.json")
         update(rid, topic=s["title"], title=s["yt_title"])
         mark_rendered(rid, d, s)
