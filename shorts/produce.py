@@ -4,7 +4,8 @@
           writes a point-of-view narration, scene by scene: the hero (src/hero.tsx) with a mood and a speech bubble,
           or a fact visual from the Remotion library in src/visuals.tsx                        -> script.draft.json
   cek     a second Claude pass checks every claim and number on the web and fixes them        -> script.json
-  suara   edge-tts (Ardi) reads each scene; its word timings drive captions and cues          -> vo*.mp3, props.json
+  suara   Gemini TTS reads the whole story in one take, each line in its scene's emotion; faster-whisper times
+          the words (edge-tts Ardi per scene when Gemini is out of quota)                  -> voice.mp3, props.json
   render  Remotion draws the 1080x1920 video                                                   -> final.mp4
 
   .venv/bin/python shorts/produce.py <id> [--script file.json] [--topic "mesin ATM"] [--idea ideas.json slot] [--style 3d]
@@ -35,6 +36,15 @@ TYPES = {"pov", "globe", "icon", "gauge", "bars", "versus", "fly", "rise", "swar
 
 MOODS = ["happy", "shock", "tired", "angry", "sad", "dizzy", "love", "smug", "scared", "proud"]
 THEMES = ["kota", "malam", "ruangan", "alam", "dapur", "laut"]
+# The emotion each line is read in. Gemini gets the English tag (it acts it out, never reads it); edge-tts, which has
+# no speaking styles for Indonesian, only bends pace, pitch and loudness: (tag, rate, pitch, volume).
+EMOSI = {
+    "tegang": ("[tense]", "+6%", "-2Hz", "+0%"), "panik": ("[panicked]", "+14%", "+2Hz", "+6%"),
+    "kaget": ("[shocked]", "+12%", "+4Hz", "+10%"), "serius": ("[serious]", "+4%", "-3Hz", "+0%"),
+    "kagum": ("[amazed]", "+6%", "+2Hz", "+0%"), "senang": ("[excited]", "+12%", "+3Hz", "+4%"),
+    "lega": ("[relieved]", "+4%", "+1Hz", "+0%"), "sedih": ("[sad]", "-4%", "-4Hz", "-6%"),
+    "bisik": ("[whispering]", "-2%", "-5Hz", "-25%"),
+}
 
 LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF BESAR otomatis, buat SINGKAT):
 - {"type":"pov","mood":"happy|shock|tired|angry|sad|dizzy|love|smug|scared|proud","say":"...","motion":"idle|shake|jump|spin|shiver|tilt","props":["🧍","💳"],"props_motion":"around|rain|queue|burst|in|hit","stamp":"..."}  SANG TOKOH (benda yang kamu perankan, dari field "hero") digambar besar dengan wajah dan ekspresi mood. say = isi hati/ucapan tokoh di gelembung bicara, maks 5 kata, lucu, BUKAN pengulangan narasi (boleh kosong). motion terjadi di kata cue (shake = terguncang, jump = melompat kaget, spin = berputar, shiver = gemetar terus, tilt = miring lesu). props = 0-4 emoji: around = mengelilingi, queue = antre di depan, rain = berjatuhan dari atas, burst = menyembur keluar dari tokoh di kata cue (uang keluar dari ATM), in = melesat masuk ke tokoh di kata cue (kartu masuk, koin dimasukkan), hit = menghantam tokoh dari samping tepat di kata cue (tendangan, linggis, bola). Pilih props dan motion yang MEMPERAGAKAN kalimatnya, bukan hiasan.
@@ -64,7 +74,7 @@ WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadiny
    e. Boleh ada humor ringan dari situasi kerja khas Indonesia (tanggal gajian, macet, mudik, pelanggan rewel), tapi ketegangan tetap jadi tulang punggung; jangan mengejek profesi atau orang.
 4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "kilogram", "derajat Celsius", "persen", "rupiah" (Rp 100 ribu ditulis "100 ribu rupiah"). Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
 5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), Untuk profesi pakai body "emoji" dengan emoji profesi standar (👨‍✈️ 🧑‍🚒 🧑‍⚕️ 👷 🧑‍🔧 💂 🧑‍🍳) dan face false. "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
-6. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong).
+6. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong), "emosi" (nada suara narator di kalimat itu: {", ".join(EMOSI)}; ikuti perasaan orang yang mengalaminya dan buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir).
 
 {LIBRARY}
 
@@ -79,7 +89,7 @@ Balas HANYA JSON:
  "hook_scores":[8,5,9,6,7],
  "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
- "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"..."}}]}}"""
+ "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"...","emosi":"tegang"}}]}}"""
 
 CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Jadinya?" (format point of view: "gimana jadinya kalau kamu jadi <sesuatu>"). Kamu menerima naskah JSON.
 1. Periksa SETIAP klaim dan angka di narasi DAN di visual dengan pencarian web ke sumber tepercaya. Perbaiki yang salah atau berlebihan; samakan angka di visual dengan narasi. Klaim spekulatif harus ditandai "menurut perkiraan ilmuwan" atau sejenisnya.
@@ -87,7 +97,7 @@ CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Ja
 
 {LIBRARY}
 
-3. Jangan mengubah topik, "hero", atau "theme". Pertahankan gaya santai dan lucu. Perbarui "sources" dengan URL yang kamu pakai untuk memeriksa.
+3. Pertahankan "emosi" tiap adegan (perbaiki kalau tidak cocok dengan kalimatnya). Jangan mengubah topik, "hero", atau "theme". Pertahankan gaya santai dan lucu. Perbarui "sources" dengan URL yang kamu pakai untuk memeriksa.
 Balas HANYA JSON: {{"issues":["daftar yang kamu perbaiki, kosong kalau tidak ada"],"script":{{...naskah lengkap yang sudah diperbaiki, format sama...}}}}"""
 
 
@@ -98,16 +108,16 @@ IMAGE_STYLE = ("Stylized 3D CGI render, not a photograph, vertical 9:16 composit
                "numbers, no logos, no watermark, no blood.")
 
 _RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik TOKOH "kamu" (orang Indonesia yang menjalani profesi itu) yang SAMA PERSIS dipakai di setiap prompt gambar yang menampilkannya, supaya wajah, rambut, dan seragamnya konsisten (contoh: "a young Indonesian male pilot with short black hair and a thin moustache, white shirt with four gold stripes on the epaulettes, black tie, aviator headset"). Tokoh digambar sebagai karakter 3D bergaya dengan wajah ekspresif yang menunjukkan emosi adegan.
-6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau tokohmu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis wajah tokoh, tampak potongan/cutaway yang memperlihatkan isi alat atau mesin, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong)."""
+6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau tokohmu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis wajah tokoh, tampak potongan/cutaway yang memperlihatkan isi alat atau mesin, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong), "emosi" (nada suara narator di kalimat itu: {emosi}; ikuti perasaan orang yang mengalaminya dan buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir)."""
 
 WRITER_3D = WRITER_SYS.replace(WRITER_SYS[WRITER_SYS.index("5. \"hero\" menggambarkan"):WRITER_SYS.index("Balas HANYA JSON:")],
-                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items())) + "\n\n")
+                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items()), emosi=", ".join(EMOSI)) + "\n\n")
 WRITER_3D = WRITER_3D.replace("dalam animasi grafis 35-50 detik", "dalam animasi render 3D 30-40 detik")
 WRITER_3D = WRITER_3D.replace(""" "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
- "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"..."}}]}}""".replace("{{", "{").replace("}}", "}"),
+ "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"...","emosi":"tegang"}}]}}""".replace("{{", "{").replace("}}", "}"),
  """ "hero_look":"...",
- "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"..."}]}""")
+ "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""")
 
 CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + (
     "setiap adegan punya \"image\" (prompt bahasa Inggris yang memperagakan kalimatnya secara harfiah, memuat hero_look "
@@ -115,7 +125,7 @@ CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + 
     ", \"label\" maks 12 huruf dan angkanya sama dengan narasi; tiap \"cue\" adalah kata yang ada persis di text "
     "adegannya; angka pakai digit format Indonesia; {ENDING_CHECK}; \"hook_text\" "
     "maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi; prosedur dan angka profesi "
-    "sesuai sumber resmi.\n\n3. Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
+    "sesuai sumber resmi.\n\n3. Pertahankan \"emosi\" tiap adegan (perbaiki kalau tidak cocok). Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
     "santai dan menegangkan. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
     "{\"issues\":[\"daftar yang kamu perbaiki, kosong kalau tidak ada\"],\"script\":{...naskah lengkap yang sudah "
     "diperbaiki, format sama...}}")
@@ -165,6 +175,8 @@ def tidy3d(s):
             x.pop("cue", None)
         if x.get("sfx") not in SFX:
             x.pop("sfx", None)
+        if x.get("emosi") not in EMOSI:
+            x["emosi"] = "tegang"
         x.pop("visual", None)
     s["scenes"] = scenes
     s["style"] = "3d"
@@ -270,6 +282,8 @@ def tidy(s):
             x.pop("cue", None)
         if x.get("sfx") not in SFX:
             x.pop("sfx", None)
+        if x.get("emosi") not in EMOSI:
+            x["emosi"] = "tegang"
     h = s.get("hero") if isinstance(s.get("hero"), dict) else {}
     if not h.get("emoji"):
         raise ValueError("script has no hero emoji")
@@ -290,13 +304,14 @@ def tidy(s):
     return s
 
 
-async def synth(text, mp3, tries=5):
+async def synth(text, mp3, rate=RATE, pitch="+0Hz", volume="+0%", tries=5):
     # Microsoft's server now and then stalls on one request; a moment later it answers.
     for attempt in range(tries):
         words = []
         try:
             with open(mp3, "wb") as f:
-                async for c in edge_tts.Communicate(text, VOICE, rate=RATE, boundary="WordBoundary").stream():
+                async for c in edge_tts.Communicate(text, VOICE, rate=rate, pitch=pitch, volume=volume,
+                                                    boundary="WordBoundary").stream():
                     if c["type"] == "audio":
                         f.write(c["data"])
                     elif c["type"] == "WordBoundary":
@@ -316,11 +331,82 @@ def duration(path):
                                           "-of", "csv=p=0", str(path)]).strip())
 
 
-def voice(s, d, pub):
+# The loop: the last word is cut 0.08 s after it ends and the first starts at frame 0, so YouTube's replay lands
+# straight on the opening line instead of after a second of silence.
+TAIL = 0.08
+GEMINI_STYLE = ("Read aloud in Indonesian as a gripping, fast-paced YouTube Shorts storyteller, very expressive and "
+                "natural: the emotion follows the tag at the start of each line (never read the tags). Quick pace, "
+                "short pauses between lines.")
+GEMINI_LOOP = (" The last line is unfinished: keep the voice suspended at the end, as if the sentence goes on.")
+
+
+def props_from(s, scenes, frames):
+    return {"title": s["title"], "hook": s.get("hook_text") or "", "hero": s.get("hero"), "theme": s.get("theme"),
+            "style": s.get("style"), "fps": FPS, "frames": frames, "scenes": scenes}
+
+
+def voice_gemini(s, d, pub):
+    """The whole story in one Gemini take, each line tagged with its scene's emotion, timed by faster-whisper.
+    One take a video keeps the free tier's 10 requests a day per model enough for three Shorts and their retries."""
+    import numpy as np
+    import tts
+    if not tts.ENV.get("GEMINI_API_KEY"):
+        raise RuntimeError("no GEMINI_API_KEY in .env")
+    style = GEMINI_STYLE + (GEMINI_LOOP if s.get("ending") == "loop" else "") + ":\n"
+    lines = "\n".join(f"{EMOSI.get(x.get('emosi'), EMOSI['tegang'])[0]} {x['text']}" for x in s["scenes"])
+    tokens = [w for x in s["scenes"] for w in x["text"].split()]
+    (d / "tts").mkdir(exist_ok=True)
+    err = None
+    for model, styled in tts.GEMINI_MODELS:
+        tts.model, tts.styled = model, styled
+        f = d / "tts" / f"{model}.wav"
+        try:
+            spoken = tts.take((style if styled else "") + lines, tokens, f)
+            break
+        except Exception as e:  # noqa: BLE001 - quota or a bad take: the next model, then edge-tts
+            err = e
+            log(f"{model} failed: {str(e)[:300]}")
+    else:
+        raise RuntimeError(f"no Gemini take: {err}")
+    raw = tts.pcm(f)
+    total = len(raw) / 2 / tts.SR
+    timed = tts.align(tokens, spoken)
+    # Trim the take to the voice: from where it rises out of silence to just after the last sound.
+    a = tts.onset(raw)
+    rev = np.frombuffer(raw, np.int16)[::-1].tobytes()
+    b = min(total - max(tts.onset(rev) - 0.03, 0) + TAIL, total)
+    shift = a - timed[0]["s"]  # whisper may start the first word late; anchor it on the real onset
+    words = [{"w": w["w"], "s": min(max(w["s"] + shift - a, 0), b - a), "e": min(max(w["e"] + shift - a, 0), b - a)}
+             for w in timed]
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", str(f), "-af",
+                    "loudnorm=I=-14:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "192k", str(pub / "voice.mp3")], check=True)
+    length = duration(pub / "voice.mp3")
+    starts, at = [], 0
+    for x in s["scenes"]:
+        starts.append(0.0 if not at else max(words[at]["s"] - 0.1, 0))  # the picture changes just before the line
+        at += len(x["text"].split())
+    starts.append(length)
+    scenes, at = [], 0
+    for i, x in enumerate(s["scenes"]):
+        n = len(x["text"].split())
+        f0 = round(starts[i] * FPS)
+        scenes.append({**x, "from": f0, "frames": max(round(starts[i + 1] * FPS) - f0, 1),
+                       "words": [{"w": w["w"], "s": round(w["s"] * FPS) - f0, "e": round(w["e"] * FPS) - f0}
+                                 for w in words[at:at + n]]})
+        at += n
+    props = {**props_from(s, scenes, round(length * FPS)), "narration": "voice.mp3"}
+    save(d / "props.json", props)
+    log(f"voice: gemini {tts.model} {tts.GEMINI_VOICE}, {length:.1f} s")
+    return props
+
+
+def voice_edge(s, d, pub):
     t, scenes = 0.0, []
+    last = len(s["scenes"]) - 1
     for i, x in enumerate(s["scenes"]):
         mp3 = pub / f"vo{i:02}.mp3"
-        words = asyncio.run(synth(x["text"], mp3))
+        _, rate, pitch, vol = EMOSI.get(x.get("emosi"), ("", RATE, "+0Hz", "+0%"))
+        words = asyncio.run(synth(x["text"], mp3, rate, pitch, vol))
         # Word boundaries drop punctuation; put back the mark after each word so captions break on sentences.
         at = 0
         for w in words:
@@ -331,18 +417,26 @@ def voice(s, d, pub):
                 if m:
                     w["w"] += m.group()
         # edge-tts pads silence at both ends: the scene runs from the first word to just after the last.
-        lead = max(words[0]["s"] - 0.05, 0)
-        end = min(words[-1]["e"] + 0.2, duration(mp3))
-        length = end - lead + GAP
+        lead = max(words[0]["s"] - (0 if i == 0 else 0.05), 0)
+        end = min(words[-1]["e"] + (TAIL if i == last else 0.2), duration(mp3))
+        length = end - lead + (0 if i == last else GAP)
         scenes.append({**x, "audio": mp3.name, "audioFrom": round(lead * FPS), "from": round(t * FPS),
                        "frames": round(length * FPS),
                        "words": [{"w": w["w"], "s": round((w["s"] - lead) * FPS), "e": round((w["e"] - lead) * FPS)}
                                  for w in words]})
         t += length
-    props = {"title": s["title"], "hook": s.get("hook_text") or "", "hero": s.get("hero"), "theme": s.get("theme"), "style": s.get("style"), "fps": FPS, "frames": round(t * FPS) + 6, "scenes": scenes}
+    props = props_from(s, scenes, round(t * FPS))
     save(d / "props.json", props)
-    log(f"voice: {t:.1f} s")
+    log(f"voice: edge-tts {VOICE}, {t:.1f} s")
     return props
+
+
+def voice(s, d, pub):
+    try:
+        return voice_gemini(s, d, pub)
+    except Exception as e:  # noqa: BLE001 - the video still gets a voice
+        log(f"Gemini voice failed, edge-tts reads it: {str(e)[:300]}")
+        return voice_edge(s, d, pub)
 
 
 def render(d, pub):

@@ -76,16 +76,36 @@ export const SoftCaptions: React.FC<{words: Word[]}> = ({words}) => {
   );
 };
 
+// The title held on screen the whole video, after the hook: a tilted yellow GIMANA JADINYA? tab, then "KALAU KAMU JADI"
+// small and the profession huge in yellow, so the role reads at a glance. It slams in once and then sits still, wrapping
+// instead of running off the screen.
+const ROLE = /^\s*(kalau|gimana jadinya kalau)?\s*kamu\s+jadi\s+/i;
 export const TopTag: React.FC<{title: string; from?: number}> = ({title, from = 0}) => {
   const frame = useCurrentFrame();
-  const show = interpolate(frame, [from, from + 8], [0, 1], clamp);
-  if (show <= 0) return null;
+  if (frame < from) return null;
+  const clean = title.replace(/[?!.]+\s*$/, '').trim();
+  const lead = ROLE.test(clean) ? 'KALAU KAMU JADI' : '';
+  const role = clean.replace(ROLE, '').toUpperCase();
+  const size = role.length <= 12 ? 120 : role.length <= 18 ? 100 : role.length <= 26 ? 84 : 70;
+  const p = spring({frame: frame - from, fps: 30, config: {damping: 10, stiffness: 180}});
+  const tab = spring({frame: frame - from - 5, fps: 30, config: {damping: 8, stiffness: 220}});
+  const stroke = (w: number) => ({WebkitTextStroke: `${w}px #000`, paintOrder: 'stroke fill' as const});
   return (
-  <div style={{position: 'absolute', top: 150, width: '100%', textAlign: 'center', opacity: show}}>
-    <span style={{fontFamily: SANS, fontWeight: 800, fontSize: 48, color: 'white', background: 'rgba(0,0,0,.55)',
-      padding: '14px 34px', borderRadius: 44, letterSpacing: 0.5}}>
-      <span style={{color: '#FFD400'}}>GIMANA JADINYA?</span> {title.replace(/^kalau\s+/i, '').replace(/\?$/, '')}</span>
-  </div>
+    <AbsoluteFill style={{pointerEvents: 'none'}}>
+      <AbsoluteFill style={{opacity: Math.min(p, 1), background:
+        'linear-gradient(180deg, rgba(0,0,0,.6) 0%, rgba(0,0,0,.35) 18%, rgba(0,0,0,0) 32%)'}} />
+      <div style={{position: 'absolute', top: 150, left: 50, right: 50, textAlign: 'center', transformOrigin: '50% 0%',
+        opacity: Math.min(p * 2, 1), transform: `scale(${interpolate(p, [0, 1], [1.35, 1])})`}}>
+        <div style={{display: 'inline-block', fontFamily: 'Anton', fontSize: 50, letterSpacing: 2, color: '#111',
+          background: '#FFD400', padding: '2px 28px', borderRadius: 14, boxShadow: '0 8px 0 #B38F00, 0 12px 30px rgba(0,0,0,.5)',
+          transform: `rotate(${interpolate(tab, [0, 1], [-12, -3])}deg) scale(${interpolate(tab, [0, 1], [0.6, 1])})`}}>
+          GIMANA JADINYA?</div>
+        {lead && <div style={{fontFamily: 'Anton', fontSize: 56, color: 'white', letterSpacing: 3, marginTop: 22,
+          lineHeight: 1, ...stroke(10)}}>{lead}</div>}
+        <div style={{fontFamily: 'Anton', fontSize: size, color: '#FFD400', lineHeight: 1.02, marginTop: 6,
+          letterSpacing: 1, ...stroke(14), textShadow: '0 10px 0 rgba(0,0,0,.45)'}}>{role}</div>
+      </div>
+    </AbsoluteFill>
   );
 };
 

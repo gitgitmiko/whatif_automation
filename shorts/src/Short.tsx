@@ -8,10 +8,11 @@ import {Hero, HeroContext, Pov, PovOutro, THEMES} from './hero';
 import {HOOK_FRAMES, HookCard, ImageScene, Label, TopTag, XFADE} from './scene3d';
 
 export type Scene = {
-  text: string; visual: Visual; cue?: string; sfx?: string; audio: string; audioFrom: number;
+  text: string; visual: Visual; cue?: string; sfx?: string; audio?: string; audioFrom?: number;
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
 };
-export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string};
+// narration: one voice track for the whole video (Gemini); without it each scene plays its own audio (edge-tts).
+export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string};
 
 const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
@@ -50,8 +51,9 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-const Short3D: React.FC<ShortProps> = ({title, hook, scenes}) => (
+const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration}) => (
   <AbsoluteFill style={{background: '#000'}}>
+    {narration && <Audio src={staticFile(narration)} />}
     {scenes.map((s, i) => {
       const lead = i ? XFADE : 0;  // each picture dissolves in over the end of the one before
       return (
@@ -64,7 +66,7 @@ const Short3D: React.FC<ShortProps> = ({title, hook, scenes}) => (
       <Sequence key={i} from={s.from} durationInFrames={s.frames} name={`${i} ${s.camera ?? ''}`}>
         <Label scene={s} />
         <Captions words={s.words} top={1150} />
-        <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />
+        {s.audio && <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />}
         {i > 0 && <Audio src={staticFile('sfx/whoosh.wav')} volume={0.15} />}
         {s.sfx && (
           <Sequence from={Math.max(cueFrame(s.words, s.cue) - 2, 0)}>
@@ -86,11 +88,12 @@ export const Short: React.FC<ShortProps> = (props) => {
     <HeroContext.Provider value={hero ?? {}}>
     <AbsoluteFill style={{background: pov ? THEMES[theme ?? ''] ?? THEMES.kota
       : 'radial-gradient(circle at 50% 40%, #1d2b64 0%, #0b0f2a 60%, #05060f 100%)'}}>
+      {props.narration && <Audio src={staticFile(props.narration)} />}
       {pov ? <AbsoluteFill style={{background: 'radial-gradient(ellipse at 50% 70%, rgba(255,255,255,.12), transparent 55%)'}} /> : <Stars />}
       {scenes.map((s, i) => (
         <Sequence key={i} from={s.from} durationInFrames={s.frames} name={`${i} ${s.visual.type}`}>
           <SceneView scene={s} pov={pov} />
-          <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />
+          {s.audio && <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />}
           {i > 0 && <Audio src={staticFile('sfx/whoosh.wav')} volume={0.35} />}
           {s.sfx && (
             <Sequence from={Math.max(cueFrame(s.words, s.cue) - 2, 0)}>
