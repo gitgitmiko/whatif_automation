@@ -60,7 +60,7 @@ WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadiny
    a. KALIMAT PERTAMA LANGSUNG DI TENGAH AKSI. Judul "Kalau kamu jadi ..." sudah tampil di layar sejak detik pertama, jadi narasi TIDAK BOLEH membuka dengan "Gimana jadinya kalau", pertanyaan, salam, atau perkenalan. Buka dengan momen paling dramatis yang SEDANG terjadi padamu saat bekerja, maksimal 14 kata, konkret dan bisa digambar, dan HARUS mengandung taruhan nyata: nyawa (milikmu atau orang lain), uang, batas waktu, atau malu besar. Suasana biasa ("kamu berangkat kerja", "hari pertama kerja") BUKAN hook. Tulis dulu 5 kandidat di "hook_candidates", beri tiap kandidat nilai 1-10 di "hook_scores" (taruhan terbesar + paling mudah dibayangkan dalam 1 detik = nilai tertinggi), lalu WAJIB pakai kandidat bernilai tertinggi sebagai kalimat pertama dan bangun cerita dari situ. Contoh pola: "Ketinggian 300 meter, dan sesuatu baru saja menghantam kaca kokpitmu." / "Gagang pintu itu panas, dan asap hitam keluar dari celah bawahnya." / "Kamu terima selembar seratus ribu, dan teksturnya terasa aneh di jarimu."
    b. Lalu jelaskan KENAPA itu terjadi dengan fakta nyata ("Soalnya...", "Ternyata..."), satu rantai sebab-akibat, BUKAN daftar fakta yang dilompat-lompat. Setiap adegan menyambung ke adegan berikutnya dengan "Lalu", "Tapi", "Makanya", "Masalahnya".
    c. Di tengah, satu belokan: "Tapi ada satu masalah..." atau fakta yang membalik dugaan penonton.
-   d. Tutup dengan punchline atau fakta paling mengejutkan, lalu BERHENTI. Tanpa ajakan komentar, tanpa "kamu mau jadi apa", tanpa kesimpulan. WAJIB loop: kalimat terakhir menggantung dan menyambung mulus ke kalimat pertama (misalnya diakhiri "...dan saat itulah" yang membuat kalimat pembuka terasa sebagai lanjutannya), sehingga video terasa berulang dan penonton menonton ulang tanpa sadar.
+   d. Tutup dengan punchline atau fakta paling mengejutkan, lalu BERHENTI. Tanpa ajakan komentar, tanpa "kamu mau jadi apa", tanpa kesimpulan. {{ENDING_RULE}}
    e. Boleh ada humor ringan dari situasi kerja khas Indonesia (tanggal gajian, macet, mudik, pelanggan rewel), tapi ketegangan tetap jadi tulang punggung; jangan mengejek profesi atau orang.
 4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "kilogram", "derajat Celsius", "persen", "rupiah" (Rp 100 ribu ditulis "100 ribu rupiah"). Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
 5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), Untuk profesi pakai body "emoji" dengan emoji profesi standar (👨‍✈️ 🧑‍🚒 🧑‍⚕️ 👷 🧑‍🔧 💂 🧑‍🍳) dan face false. "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
@@ -83,7 +83,7 @@ Balas HANYA JSON:
 
 CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Jadinya?" (format point of view: "gimana jadinya kalau kamu jadi <sesuatu>"). Kamu menerima naskah JSON.
 1. Periksa SETIAP klaim dan angka di narasi DAN di visual dengan pencarian web ke sumber tepercaya. Perbaiki yang salah atau berlebihan; samakan angka di visual dengan narasi. Klaim spekulatif harus ditandai "menurut perkiraan ilmuwan" atau sejenisnya.
-2. Pastikan aturan: 6-8 adegan; total 70-100 kata; kalimat pertama langsung di tengah aksi dengan konflik (bahaya, sakit, serangan, keanehan; maks 14 kata, TIDAK diawali "Gimana jadinya", pertanyaan, atau perkenalan; kalau melanggar, tulis ulang kalimat pertamanya); kalimat pertama adalah kandidat dengan nilai tertinggi di "hook_scores" bila ada; adegan saling menyambung sebagai satu rantai sebab-akibat dengan satu belokan; penutup berhenti di punchline tanpa ajakan komentar atau pertanyaan ke penonton; kira-kira separuh adegan visual pov dengan mood yang berganti dan props yang memperagakan kalimat; "say" maks 5 kata dan tidak mengulang narasi; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; kalimat terakhir menyambung ke kalimat pertama (loop); "hook_text" maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi (perbaiki kalau terdengar mengejek); prosedur dan angka profesi sesuai sumber resmi; visual sesuai daftar berikut.
+2. Pastikan aturan: 6-8 adegan; total 70-100 kata; kalimat pertama langsung di tengah aksi dengan konflik (bahaya, sakit, serangan, keanehan; maks 14 kata, TIDAK diawali "Gimana jadinya", pertanyaan, atau perkenalan; kalau melanggar, tulis ulang kalimat pertamanya); kalimat pertama adalah kandidat dengan nilai tertinggi di "hook_scores" bila ada; adegan saling menyambung sebagai satu rantai sebab-akibat dengan satu belokan; penutup berhenti di punchline tanpa ajakan komentar atau pertanyaan ke penonton; kira-kira separuh adegan visual pov dengan mood yang berganti dan props yang memperagakan kalimat; "say" maks 5 kata dan tidak mengulang narasi; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; {{ENDING_CHECK}}; "hook_text" maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi (perbaiki kalau terdengar mengejek); prosedur dan angka profesi sesuai sumber resmi; visual sesuai daftar berikut.
 
 {LIBRARY}
 
@@ -113,12 +113,41 @@ CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + 
     "setiap adegan punya \"image\" (prompt bahasa Inggris yang memperagakan kalimatnya secara harfiah, memuat hero_look "
     "kalau tokohnya tampil, tanpa teks di gambar, tanpa darah), \"camera\" salah satu dari " + ", ".join(CAMERAS) +
     ", \"label\" maks 12 huruf dan angkanya sama dengan narasi; tiap \"cue\" adalah kata yang ada persis di text "
-    "adegannya; angka pakai digit format Indonesia; kalimat terakhir menyambung ke kalimat pertama (loop); \"hook_text\" "
+    "adegannya; angka pakai digit format Indonesia; {ENDING_CHECK}; \"hook_text\" "
     "maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi; prosedur dan angka profesi "
     "sesuai sumber resmi.\n\n3. Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
     "santai dan menegangkan. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
     "{\"issues\":[\"daftar yang kamu perbaiki, kosong kalau tidak ada\"],\"script\":{...naskah lengkap yang sudah "
     "diperbaiki, format sama...}}")
+
+
+# Ending: semua slot "loop" menggantung (keputusan 2026-11-22; uji A/B dibatalkan). Varian "tuntas" tetap ada
+# lewat --ending tuntas. Tiap video dicatat di data/ab_ending.jsonl.
+ENDINGS = {
+    "tuntas": ('Cerita WAJIB TUNTAS: adegan terakhir memberi penyelesaian yang jelas (apa yang akhirnya terjadi atau apa yang dilakukan profesional sungguhan, plus fakta paling mengejutkan), berupa kalimat LENGKAP. DILARANG menggantung, cliffhanger, atau diakhiri "..." / "dan saat itulah". Setelah tuntas, susun kalimat penutup supaya maknanya menyambung ke kalimat pertama (loop alami), contoh: pembuka "Air yang kamu semprot ke langit-langit tidak menetes balik" dan penutup "Ingat aturannya: selama air itu masih menetes balik, kamu masih aman." Penonton merasa puas, lalu pembuka langsung terasa sebagai bahaya berikutnya.',
+               'cerita tuntas di adegan terakhir dengan kalimat lengkap (tanpa "...", tanpa cliffhanger; kalau menggantung, '
+               'tulis ulang jadi penyelesaian yang maknanya menyambung ke kalimat pertama)'),
+    "loop": ('WAJIB loop menggantung: semua fakta penting sudah tersampaikan sebelum adegan terakhir; kalimat terakhir '
+             'sengaja menggantung dan menyambung mulus ke kalimat pertama (misalnya diakhiri "...dan saat itulah"), '
+             'sehingga saat Shorts berputar ulang, kalimat pembuka terdengar sebagai lanjutannya dan penonton menonton '
+             'ulang tanpa sadar.',
+             'kalimat terakhir menggantung dan menyambung mulus ke kalimat pertama (loop); semua fakta penting sudah '
+             'disampaikan sebelumnya'),
+}
+ENDING_BY_SLOT = {"pagi": "loop", "sore": "loop", "malam": "loop"}
+
+
+def prompts(three, ending):
+    rule, check = ENDINGS[ending]
+    writer = (WRITER_3D if three else WRITER_SYS).replace("{ENDING_RULE}", rule)
+    checker = (CHECK_3D if three else CHECK_SYS).replace("{ENDING_CHECK}", check)
+    return writer, checker
+
+
+def cliffhanger(s):
+    """The story must end resolved; a trailing "..." or "dan saat itulah" leaves viewers feeling it was cut off."""
+    last = (s.get("scenes") or [{}])[-1].get("text", "").strip()
+    return bool(re.search(r"(\.\.\.|…|saat itulah)\W*$", last, re.I))
 
 
 def tidy3d(s):
@@ -322,8 +351,10 @@ def render(d, pub):
                    timeout=1800)
 
 
-def main(rid, script_file=None, topic=None, idea=None, style=None):
+def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None):
     d = RUNS / rid
+    slot = (idea or {}).get("slot") or next((x for x in rid.split("-") if x in ENDING_BY_SLOT), "")
+    ending = ending if ending in ENDINGS else ENDING_BY_SLOT.get(slot, "tuntas")
     d.mkdir(parents=True, exist_ok=True)
     if script_file:
         raw = load(script_file)
@@ -338,15 +369,28 @@ def main(rid, script_file=None, topic=None, idea=None, style=None):
         elif topic:
             brief = {"topik_wajib": f"kamu jadi {topic}", "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
         three = style == "3d"
-        draft = claude_json("opus", WRITER_3D if three else WRITER_SYS, json.dumps(brief, ensure_ascii=False), web=True)
+        writer, checker = prompts(three, ending)
+        log(f"ending: {ending}")
+        draft = claude_json("opus", writer, json.dumps(brief, ensure_ascii=False), web=True)
         save(d / "script.draft.json", draft)
         fix = tidy3d if three else tidy
         fix(json.loads(json.dumps(draft)))  # fail early on a draft the checker could not save
         print("STAGE cek", flush=True)
-        checked = claude_json("opus", CHECK_3D if three else CHECK_SYS, json.dumps(draft, ensure_ascii=False), web=True)
+        checked = claude_json("opus", checker, json.dumps(draft, ensure_ascii=False), web=True)
         for issue in checked.get("issues", []):
             log("fixed:", issue)
         s = fix(checked.get("script") or draft)
+        if ending == "tuntas" and cliffhanger(s):  # one more pass with the ending as the only job
+            log("ending is a cliffhanger, asking the checker to resolve it:", s["scenes"][-1]["text"])
+            again = claude_json("opus", checker, json.dumps(
+                {**s, "catatan_editor": "Adegan terakhir menggantung. Tulis ulang HANYA adegan terakhir jadi penyelesaian "
+                 "tuntas berupa kalimat lengkap yang maknanya menyambung ke kalimat pertama."}, ensure_ascii=False), web=False)
+            s = fix(again.get("script") or s)
+            if cliffhanger(s):
+                raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
+        s["ending"] = ending
+        with open(ROOT / "data" / "ab_ending.jsonl", "a") as fh:
+            fh.write(json.dumps({"run": rid, "ending": ending, "title": s.get("yt_title")}, ensure_ascii=False) + "\n")
     save(d / "script.json", s)
     print("STAGE suara", flush=True)
     pub = d / "public"
@@ -372,4 +416,5 @@ if __name__ == "__main__":
         k = a.index("--idea")
         idea = next((i for i in load(a[k + 1])["ideas"] if i.get("slot") == a[k + 2]), None)
     main(a[0], a[a.index("--script") + 1] if "--script" in a else None,
-         a[a.index("--topic") + 1] if "--topic" in a else None, idea, a[a.index("--style") + 1] if "--style" in a else None)
+         a[a.index("--topic") + 1] if "--topic" in a else None, idea, a[a.index("--style") + 1] if "--style" in a else None,
+         a[a.index("--ending") + 1] if "--ending" in a else None)
