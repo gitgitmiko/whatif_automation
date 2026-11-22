@@ -10,13 +10,16 @@ and n8n patterns work.
   POST /api/videos/<id>/uploaded {youtube_id} | /failed {error}
   GET  /api/monitor/overview | history?page&pageSize&status&date | logs?lines   for dashboard-gitgit
   GET  /api/preview/<id>/<key>.mp4          no token: the key is the link; works only until the video is uploaded
+  GET  /api/stats/targets                  uploaded videos of the last 30 days, for the n8n analytics workflow
+  POST /api/stats {report}                  YouTube Analytics per-video totals -> data/analytics/videos.json
+  POST /api/stats/retention {youtube_id, report}   one video's audience retention curve
 """
 import datetime as dt, hashlib, hmac, json, os, re, secrets, shutil, sqlite3, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
-from common import ROOT, RUNS, load, log
+from common import ROOT, RUNS, load, log, save
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
@@ -34,6 +37,7 @@ KEEP_DAYS = 7
 PIPE = ROOT / "pipeline"
 DB = ROOT / "data" / "whatif.db"
 lock = threading.Lock()
+ANALYTICS = ROOT / "data" / "analytics"
 state = {"busy": None, "ideas": None}  # ideas: when today's research last started
 
 
@@ -298,7 +302,7 @@ class H(BaseHTTPRequestHandler):
 
     def body(self):
         n = int(self.headers.get("Content-Length") or 0)
-        return json.loads(self.rfile.read(n) or b"{}") if n < 1e5 else {}
+        return json.loads(self.rfile.read(n) or b"{}") if n < 2e6 else {}
 
     def route(self, method):
         u = urlparse(self.path)
@@ -356,12 +360,49 @@ class H(BaseHTTPRequestHandler):
                 update(m[1], status="failed", error=("Upload gagal: " + str(b.get("error", "upload failed")))[:1000])
             log(m[1], "->", m[2])
             return self.send(200, {"ok": True})
+        if u.path.startswith("/api/stats"):
+            return self.stats(method, u.path)
         if method == "GET" and u.path.startswith("/api/monitor/"):
             part = u.path.rsplit("/", 1)[1]
             fn = {"overview": lambda: overview(), "history": lambda: history(q), "logs": lambda: logs(q)}.get(part)
             if fn:
                 return self.send(200, fn())
         self.send(404, {"error": "not found"})
+
+    def stats(self, method, path):
+        """YouTube Analytics, pulled daily by n8n (it holds the channel's sign-in): ideas.py learns from it."""
+        (ANALYTICS / "retention").mkdir(parents=True, exist_ok=True)
+        with db() as c:
+            runs = {r["youtube_id"]: r for r in c.execute(
+                "SELECT id, slot, title, youtube_id, finished_at FROM runs WHERE status='uploaded' AND youtube_id<>'' "
+                "AND slot IN ('pagi','sore','malam')")}
+        if method == "GET" and path == "/api/stats/targets":
+            since = (now() - dt.timedelta(days=30)).isoformat()
+            return self.send(200, [{"youtube_id": k, "run": r["id"]} for k, r in runs.items() if (r["finished_at"] or "") >= since])
+        b = self.body()
+        report = b.get("report") or {}
+        if "columnHeaders" not in report:  # YouTube refused (API off, quota, sign-in): keep what we have
+            log("analytics: YouTube sent no report:", json.dumps(report)[:300])
+            return self.send(400, {"error": "no report", "got": report})
+        if method == "POST" and path == "/api/stats/retention" and b.get("youtube_id"):
+            yid = re.sub(r"[^\w-]", "", str(b["youtube_id"]))
+            curve = [{"t": row[0], "watch": row[1], "relative": row[2] if len(row) > 2 else None} for row in report.get("rows") or []]
+            save(ANALYTICS / "retention" / f"{yid}.json", {"youtube_id": yid, "at": now().isoformat(), "curve": curve})
+            return self.send(200, {"ok": True, "points": len(curve)})
+        if method == "POST" and path == "/api/stats":
+            cols = [h["name"] for h in report.get("columnHeaders") or []]
+            out = []
+            for row in report.get("rows") or []:
+                v = dict(zip(cols, row))
+                r = runs.get(v.get("video"))
+                sc = load(RUNS / r["id"] / "script.json") if r and (RUNS / r["id"] / "script.json").exists() else {}
+                out.append({**v, "run": r["id"] if r else None, "slot": r["slot"] if r else None,
+                            "title": (r["title"] if r else None) or sc.get("yt_title"), "seri": sc.get("seri"),
+                            "mode": sc.get("mode"), "style": sc.get("style"), "uploaded": r["finished_at"] if r else None})
+            save(ANALYTICS / "videos.json", {"at": now().isoformat(), "videos": out})
+            log(f"analytics: {len(out)} videos")
+            return self.send(200, {"ok": True, "videos": len(out)})
+        return self.send(400, {"error": "bad stats request"})
 
     def do_GET(self):
         self.route("GET")

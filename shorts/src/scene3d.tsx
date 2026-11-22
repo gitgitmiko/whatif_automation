@@ -80,7 +80,8 @@ export const SoftCaptions: React.FC<{words: Word[]}> = ({words}) => {
 // small and the profession huge in yellow, so the role reads at a glance. It slams in once and then sits still, wrapping
 // instead of running off the screen.
 const ROLE = /^\s*(kalau|gimana jadinya kalau)?\s*kamu\s+jadi\s+/i;
-export const TopTag: React.FC<{title: string; from?: number}> = ({title, from = 0}) => {
+// series: "NIGHT SHIFT · EP. 4" in a small chip beside the tab (red for horror), so a viewer knows there is more.
+export const TopTag: React.FC<{title: string; from?: number; series?: string; horror?: boolean}> = ({title, from = 0, series, horror}) => {
   const frame = useCurrentFrame();
   if (frame < from) return null;
   const clean = title.replace(/[?!.]+\s*$/, '').trim();
@@ -100,6 +101,10 @@ export const TopTag: React.FC<{title: string; from?: number}> = ({title, from = 
           background: '#FFD400', padding: '2px 28px', borderRadius: 14, boxShadow: '0 8px 0 #B38F00, 0 12px 30px rgba(0,0,0,.5)',
           transform: `rotate(${interpolate(tab, [0, 1], [-12, -3])}deg) scale(${interpolate(tab, [0, 1], [0.6, 1])})`}}>
           GIMANA JADINYA?</div>
+        {series && <div style={{display: 'inline-block', marginLeft: 18, verticalAlign: 'top', marginTop: 10,
+          fontFamily: SANS, fontWeight: 800, fontSize: 30, letterSpacing: 2, color: 'white',
+          background: horror ? '#b3141b' : 'rgba(0,0,0,.7)', border: '3px solid rgba(255,255,255,.85)',
+          padding: '6px 18px', borderRadius: 10, opacity: Math.min(Math.max(tab, 0) * 1.5, 1)}}>{series}</div>}
         {lead && <div style={{fontFamily: 'Anton', fontSize: 56, color: 'white', letterSpacing: 3, marginTop: 22,
           lineHeight: 1, ...stroke(10)}}>{lead}</div>}
         <div style={{fontFamily: 'Anton', fontSize: size, color: '#FFD400', lineHeight: 1.02, marginTop: 6,

@@ -10,7 +10,7 @@
 
   .venv/bin/python shorts/produce.py <id> [--script file.json] [--topic "mesin ATM"] [--idea ideas.json slot] [--style 3d]
       --script skips naskah and cek; --topic fixes what "kamu" becomes instead of letting the writer pick;
-      --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
+      --mode fakta|horor overrides the slot's mode (malam = horor); --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
       3D render moved by the camera (src/scene3d.tsx) instead of the cartoon hero
 """
 import asyncio, json, re, shutil, sqlite3, subprocess, sys, urllib.parse, urllib.request
@@ -43,8 +43,19 @@ EMOSI = {
     "kaget": ("[shocked]", "+12%", "+4Hz", "+10%"), "serius": ("[serious]", "+4%", "-3Hz", "+0%"),
     "kagum": ("[amazed]", "+6%", "+2Hz", "+0%"), "senang": ("[excited]", "+12%", "+3Hz", "+4%"),
     "lega": ("[relieved]", "+4%", "+1Hz", "+0%"), "sedih": ("[sad]", "-4%", "-4Hz", "-6%"),
-    "bisik": ("[whispering]", "-2%", "-5Hz", "-25%"),
+    "bisik": ("[whispering]", "-2%", "-5Hz", "-25%"), "takut": ("[scared]", "-2%", "-3Hz", "-8%"),
 }
+# Recurring series, so viewers come back for the next episode; the tag shows after the hook (TopTag).
+SERIES = {
+    "NIGHT SHIFT": "shift malam saat semua orang tidur (satpam, kasir 24 jam, petugas hotel, operator CCTV, teknisi server, masinis kereta terakhir)",
+    "EMERGENCY": "darurat medis dan penyelamatan (dokter IGD, perawat, sopir ambulans, operator 112, tim SAR, pemadam kebakaran)",
+    "PEKERJAAN EKSTREM": "ketinggian, bawah tanah, laut dalam, cuaca ganas (teknisi tower, penambang, penyelam, pekerja offshore, pilot saat badai)",
+    "DI BALIK LAYAR": "profesi yang jarang terlihat tapi menjaga semua tetap jalan (petugas ATC, operator bendungan, teknisi lift, forensik)",
+    "HARI TERBURUK": "satu hari saat semua yang bisa salah benar-benar salah, di profesi sehari-hari (ojol, kurir, montir, chef)",
+}
+# fakta: a true moment explained with checked facts. horor: original horror fiction set in a real job whose
+# procedures and tools are true. The night slot is horror; the others stay factual.
+MODE_BY_SLOT = {"pagi": "fakta", "sore": "fakta", "malam": "horor"}
 
 LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF BESAR otomatis, buat SINGKAT):
 - {"type":"pov","mood":"happy|shock|tired|angry|sad|dizzy|love|smug|scared|proud","say":"...","motion":"idle|shake|jump|spin|shiver|tilt","props":["🧍","💳"],"props_motion":"around|rain|queue|burst|in|hit","stamp":"..."}  SANG TOKOH (benda yang kamu perankan, dari field "hero") digambar besar dengan wajah dan ekspresi mood. say = isi hati/ucapan tokoh di gelembung bicara, maks 5 kata, lucu, BUKAN pengulangan narasi (boleh kosong). motion terjadi di kata cue (shake = terguncang, jump = melompat kaget, spin = berputar, shiver = gemetar terus, tilt = miring lesu). props = 0-4 emoji: around = mengelilingi, queue = antre di depan, rain = berjatuhan dari atas, burst = menyembur keluar dari tokoh di kata cue (uang keluar dari ATM), in = melesat masuk ke tokoh di kata cue (kartu masuk, koin dimasukkan), hit = menghantam tokoh dari samping tepat di kata cue (tendangan, linggis, bola). Pilih props dan motion yang MEMPERAGAKAN kalimatnya, bukan hiasan.
@@ -64,7 +75,7 @@ LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF
 
 WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video mengajak penonton membayangkan "gimana jadinya kalau KAMU jadi <profesi>", lalu menjalani SATU momen paling menegangkan dari pekerjaan itu, penuh fakta nyata yang mengejutkan, dalam animasi grafis 35-50 detik. Penonton: orang Indonesia umum, remaja sampai dewasa.
 
-1. Pilih SATU profesi nyata yang dikenal orang Indonesia (sehari-hari seperti driver ojol, kasir minimarket, tukang parkir, satpam; berbahaya seperti pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN; atau di balik layar seperti petugas menara ATC, dokter IGD, operator bendungan) dan SATU momen krisis atau keputusan sulit yang benar-benar bisa dialami profesi itu. Hormati profesinya: nada kagum dan empatik, BUKAN mengejek. Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata tertentu, polisi/tentara dalam konteks kontroversial, hal jorok, dan hal sadis.
+1. Pilih SATU profesi nyata yang dikenal orang Indonesia (sehari-hari seperti driver ojol, kasir minimarket, tukang parkir, satpam; berbahaya seperti pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN; atau di balik layar seperti petugas menara ATC, dokter IGD, operator bendungan) dan SATU momen krisis atau keputusan sulit yang benar-benar bisa dialami profesi itu. Rumusnya: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (contoh: dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir, teknisi server saat semua bank sedang tutup buku). Jam yang spesifik ("Pukul 03.17") membuat momen langsung terbayang dan bisa dipakai lagi di akhir untuk loop. Hormati profesinya: nada kagum dan empatik, BUKAN mengejek. Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata tertentu, polisi/tentara dalam konteks kontroversial, hal jorok, dan hal sadis.
 2. Riset dengan pencarian web: cari 4-6 fakta NYATA dan mengejutkan tentang profesi itu dan momen krisisnya (prosedur resmi, alat, aturan keselamatan, angka, batas waktu, jam kerja atau penghasilan bila relevan, terutama di Indonesia). Setiap angka dan klaim harus benar menurut sumber tepercaya (bank sentral, produsen, lembaga resmi, jurnal, ensiklopedia, media besar). Kalau angka berupa perkiraan, katakan "sekitar" atau "diperkirakan".
 3. Tulis narasi Bahasa Indonesia santai (pakai "kamu", sudut pandang orang yang menjalani profesi itu), total 70-100 kata (30-40 detik), dalam 6-8 adegan, tiap adegan 5-18 kata. Ikuti pola Shorts edukasi paling laris (Zack D. Films, median 10 juta views):
    a. KALIMAT PERTAMA LANGSUNG DI TENGAH AKSI. Judul "Kalau kamu jadi ..." sudah tampil di layar sejak detik pertama, jadi narasi TIDAK BOLEH membuka dengan "Gimana jadinya kalau", pertanyaan, salam, atau perkenalan. Buka dengan momen paling dramatis yang SEDANG terjadi padamu saat bekerja, maksimal 14 kata, konkret dan bisa digambar, dan HARUS mengandung taruhan nyata: nyawa (milikmu atau orang lain), uang, batas waktu, atau malu besar. Suasana biasa ("kamu berangkat kerja", "hari pertama kerja") BUKAN hook. Tulis dulu 5 kandidat di "hook_candidates", beri tiap kandidat nilai 1-10 di "hook_scores" (taruhan terbesar + paling mudah dibayangkan dalam 1 detik = nilai tertinggi), lalu WAJIB pakai kandidat bernilai tertinggi sebagai kalimat pertama dan bangun cerita dari situ. Contoh pola: "Ketinggian 300 meter, dan sesuatu baru saja menghantam kaca kokpitmu." / "Gagang pintu itu panas, dan asap hitam keluar dari celah bawahnya." / "Kamu terima selembar seratus ribu, dan teksturnya terasa aneh di jarimu."
@@ -75,6 +86,7 @@ WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadiny
 4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "kilogram", "derajat Celsius", "persen", "rupiah" (Rp 100 ribu ditulis "100 ribu rupiah"). Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
 5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), Untuk profesi pakai body "emoji" dengan emoji profesi standar (👨‍✈️ 🧑‍🚒 🧑‍⚕️ 👷 🧑‍🔧 💂 🧑‍🍳) dan face false. "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
 6. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong), "emosi" (nada suara narator di kalimat itu: {", ".join(EMOSI)}; ikuti perasaan orang yang mengalaminya dan buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir).
+7. "seri": pilih SATU seri yang paling cocok: {"; ".join(f"{k} = {v}" for k, v in SERIES.items())}.
 
 {LIBRARY}
 
@@ -87,6 +99,7 @@ Balas HANYA JSON:
  "sources":["2-4 URL sumber yang benar-benar kamu pakai"],
  "hook_candidates":["5 kandidat kalimat pertama"],
  "hook_scores":[8,5,9,6,7],
+ "seri":"NIGHT SHIFT",
  "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
  "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"...","emosi":"tegang"}}]}}"""
@@ -111,12 +124,15 @@ _RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik TOKOH "kamu" (or
 6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau tokohmu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis wajah tokoh, tampak potongan/cutaway yang memperlihatkan isi alat atau mesin, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong), "emosi" (nada suara narator di kalimat itu: {emosi}; ikuti perasaan orang yang mengalaminya dan buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir)."""
 
 WRITER_3D = WRITER_SYS.replace(WRITER_SYS[WRITER_SYS.index("5. \"hero\" menggambarkan"):WRITER_SYS.index("Balas HANYA JSON:")],
-                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items()), emosi=", ".join(EMOSI)) + "\n\n")
+                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items()), emosi=", ".join(EMOSI))
+                               + "\n7. \"seri\": pilih SATU seri yang paling cocok: "
+                               + "; ".join(f"{k} = {v}" for k, v in SERIES.items()) + ".\n\n")
 WRITER_3D = WRITER_3D.replace("dalam animasi grafis 35-50 detik", "dalam animasi render 3D 30-40 detik")
 WRITER_3D = WRITER_3D.replace(""" "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
  "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"...","emosi":"tegang"}}]}}""".replace("{{", "{").replace("}}", "}"),
- """ "hero_look":"...",
+ """ "seri":"NIGHT SHIFT",
+ "hero_look":"...",
  "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""")
 
 CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + (
@@ -147,11 +163,30 @@ ENDINGS = {
 ENDING_BY_SLOT = {"pagi": "loop", "sore": "loop", "malam": "loop"}
 
 
-def prompts(three, ending):
+HOROR_WRITER = """
+
+MODE HOROR (aturan ini MENGALAHKAN aturan di atas yang bertentangan): video ini CERITA HOROR FIKSI orisinal dari sudut pandang profesi. Latarnya harus realistis: prosedur, alat, istilah, aturan, dan jam kerja profesi itu NYATA dan benar (cek dengan pencarian web, selipkan 2-3 fakta nyata secara alami), tapi kejadian janggalnya fiksi. Nada serius dan mencekam dari awal sampai akhir: TANPA humor, tanpa candaan, tanpa referensi anime/game. Ketakutan dibangun dari detail kecil yang tidak masuk akal (rekaman CCTV, jam, panggilan radio/telepon, pintu yang terkunci, angka di layar, suara dari tempat yang seharusnya kosong), BUKAN dari darah atau kekerasan. Dilarang: gore, sadis, bunuh diri, setan/ritual agama tertentu, tragedi nyata, tempat atau perusahaan nyata yang bisa dirugikan; jangan pernah menyebutnya kisah nyata. Hook tetap aturan 3a (kejadian janggal yang sedang terjadi, ada taruhan nyata). Belokan di tengah membuat penonton sadar ada yang salah; twist di akhir membalik dugaan penonton lalu menggantung kembali ke kalimat pertama (misalnya jam di CCTV ternyata sama dengan jam di kalimat pembuka). "emosi" kebanyakan tegang, bisik, takut, kaget. "description" diawali "Cerita fiksi." Visual/gambar: gelap, sinematik, mencekam, tanpa darah."""
+
+HOROR_CHECK = """
+
+MODE HOROR: naskah ini FIKSI horor. JANGAN menghapus atau "mengoreksi" kejadian janggal/supernaturalnya dan jangan menambahkan "menurut perkiraan ilmuwan". Periksa hanya detail profesinya (prosedur, alat, istilah, angka) yang harus nyata. Pastikan: tanpa humor, tanpa gore atau kekerasan sadis, tidak menyebut agama/ritual tertentu, tidak diklaim kisah nyata, "description" diawali "Cerita fiksi.", twist di akhir menggantung kembali ke kalimat pertama. Pertahankan "seri"."""
+
+
+def prompts(three, ending, mode="fakta"):
     rule, check = ENDINGS[ending]
     writer = (WRITER_3D if three else WRITER_SYS).replace("{ENDING_RULE}", rule)
     checker = (CHECK_3D if three else CHECK_SYS).replace("{ENDING_CHECK}", check)
+    if mode == "horor":
+        writer = writer.replace("\n\nBalas HANYA JSON:", HOROR_WRITER + "\n\nBalas HANYA JSON:", 1)
+        checker = checker.replace("\nBalas HANYA JSON:", HOROR_CHECK + "\nBalas HANYA JSON:", 1)
     return writer, checker
+
+
+def episode(seri):
+    """The next episode number of a series, from the log of every Short made."""
+    f = ROOT / "data" / "series.jsonl"
+    seen = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.exists() else []
+    return 1 + sum(1 for x in seen if x.get("seri") == seri)
 
 
 def cliffhanger(s):
@@ -180,12 +215,20 @@ def tidy3d(s):
         x.pop("visual", None)
     s["scenes"] = scenes
     s["style"] = "3d"
+    if s.get("seri") not in SERIES:
+        s.pop("seri", None)
     s["hook_text"] = str(s.get("hook_text") or "").strip()[:34]
     s["title"] = str(s.get("title") or "")[:60]
     s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
     n = sum(len(x["text"].split()) for x in scenes)
     log(f"script: {len(scenes)} scenes, {n} words, title {s['title']!r} (3d)")
     return s
+
+
+IMAGE_STYLE_HOROR = ("Stylized 3D CGI render, not a photograph, vertical 9:16 composition with the subject centred and "
+                     "room above and below. Dark cinematic horror lighting, deep shadows, cold blue and sickly green tones, "
+                     "thin fog, one harsh light source, eerie and tense, high-end animated film style. No text, no letters, "
+                     "no numbers, no logos, no watermark, no blood, no gore.")
 
 
 def pictures(s, d, pub):
@@ -207,7 +250,8 @@ def pictures(s, d, pub):
         tmp = d / "tmp-img"
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir()
-        (tmp / "p.txt").write_text("\n".join(f"{s['scenes'][i]['image'].strip()} {IMAGE_STYLE}".replace("\n", " ")
+        style = IMAGE_STYLE_HOROR if s.get("mode") == "horor" else IMAGE_STYLE
+        (tmp / "p.txt").write_text("\n".join(f"{s['scenes'][i]['image'].strip()} {style}".replace("\n", " ")
                                              for i in todo) + "\n")
         r = images.gflow("image", "t2i", "--prompts-file", tmp / "p.txt", "--aspect", "9:16", "--project",
                          pf.read_text().strip(), "--out", tmp, timeout=1800)
@@ -294,6 +338,8 @@ def tidy(s):
     if s.get("theme") not in THEMES:
         s["theme"] = "kota"
     s["scenes"] = scenes
+    if s.get("seri") not in SERIES:
+        s.pop("seri", None)
     s["hook_text"] = str(s.get("hook_text") or "").strip()[:34]
     s["title"] = str(s.get("title") or "")[:60]
     s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
@@ -334,15 +380,22 @@ def duration(path):
 # The loop: the last word is cut 0.08 s after it ends and the first starts at frame 0, so YouTube's replay lands
 # straight on the opening line instead of after a second of silence.
 TAIL = 0.08
+# A take longer than this is sped up (pitch kept) toward FIT_TO, by at most MAX_TEMPO: horror reads slowly.
+MAX_LEN, FIT_TO, MAX_TEMPO = 46.0, 44.0, 1.35
 GEMINI_STYLE = ("Read aloud in Indonesian as a gripping, fast-paced YouTube Shorts storyteller, very expressive and "
                 "natural: the emotion follows the tag at the start of each line (never read the tags). Quick pace, "
                 "short pauses between lines.")
+GEMINI_HOROR = ("Read aloud in Indonesian as a late-night horror storyteller at the brisk pace of a YouTube Short: low, close and tense, "
+                "dropping to a whisper on the frightening lines; the emotion follows the tag at the start of each line "
+                "(never read the tags). Short pauses between lines.")
 GEMINI_LOOP = (" The last line is unfinished: keep the voice suspended at the end, as if the sentence goes on.")
 
 
 def props_from(s, scenes, frames):
     return {"title": s["title"], "hook": s.get("hook_text") or "", "hero": s.get("hero"), "theme": s.get("theme"),
-            "style": s.get("style"), "fps": FPS, "frames": frames, "scenes": scenes}
+            "style": s.get("style"), "fps": FPS, "frames": frames, "scenes": scenes,
+            "series": f"{s['seri']} · EP. {s['episode']}" if s.get("seri") and s.get("episode") else "",
+            "mode": s.get("mode") or "fakta"}
 
 
 def voice_gemini(s, d, pub):
@@ -352,7 +405,7 @@ def voice_gemini(s, d, pub):
     import tts
     if not tts.ENV.get("GEMINI_API_KEY"):
         raise RuntimeError("no GEMINI_API_KEY in .env")
-    style = GEMINI_STYLE + (GEMINI_LOOP if s.get("ending") == "loop" else "") + ":\n"
+    style = (GEMINI_HOROR if s.get("mode") == "horor" else GEMINI_STYLE) + (GEMINI_LOOP if s.get("ending") == "loop" else "") + ":\n"
     lines = "\n".join(f"{EMOSI.get(x.get('emosi'), EMOSI['tegang'])[0]} {x['text']}" for x in s["scenes"])
     tokens = [w for x in s["scenes"] for w in x["text"].split()]
     (d / "tts").mkdir(exist_ok=True)
@@ -376,10 +429,13 @@ def voice_gemini(s, d, pub):
     rev = np.frombuffer(raw, np.int16)[::-1].tobytes()
     b = min(total - max(tts.onset(rev) - 0.03, 0) + TAIL, total)
     shift = a - timed[0]["s"]  # whisper may start the first word late; anchor it on the real onset
-    words = [{"w": w["w"], "s": min(max(w["s"] + shift - a, 0), b - a), "e": min(max(w["e"] + shift - a, 0), b - a)}
-             for w in timed]
+    tempo = min((b - a) / FIT_TO, MAX_TEMPO) if b - a > MAX_LEN else 1.0
+    words = [{"w": w["w"], "s": min(max(w["s"] + shift - a, 0), b - a) / tempo,
+              "e": min(max(w["e"] + shift - a, 0), b - a) / tempo} for w in timed]
+    if tempo > 1:
+        log(f"voice: take {b - a:.1f} s, sped up {tempo:.2f}x")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", str(f), "-af",
-                    "loudnorm=I=-14:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "192k", str(pub / "voice.mp3")], check=True)
+                    (f"atempo={tempo:.3f}," if tempo > 1 else "") + "loudnorm=I=-14:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "192k", str(pub / "voice.mp3")], check=True)
     length = duration(pub / "voice.mp3")
     starts, at = [], 0
     for x in s["scenes"]:
@@ -445,10 +501,11 @@ def render(d, pub):
                    timeout=1800)
 
 
-def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None):
+def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, mode=None):
     d = RUNS / rid
     slot = (idea or {}).get("slot") or next((x for x in rid.split("-") if x in ENDING_BY_SLOT), "")
     ending = ending if ending in ENDINGS else ENDING_BY_SLOT.get(slot, "tuntas")
+    mode = mode if mode in ("fakta", "horor") else (idea or {}).get("mode") or MODE_BY_SLOT.get(slot, "fakta")
     d.mkdir(parents=True, exist_ok=True)
     if script_file:
         raw = load(script_file)
@@ -458,13 +515,13 @@ def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None):
         brief = {"judul_yang_sudah_pernah_dibuat": previous_titles(), "saran_pencarian_youtube": suggestions()}
         if idea:
             brief = {"topik_wajib": f"kamu jadi {idea['topic']}", "ide_dari_riset": {k: idea.get(k) for k in (
-                "angle", "hook", "facts", "inspired_by")}, "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
+                "angle", "hook", "facts", "inspired_by", "seri")}, "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
             log(f"idea: kamu jadi {idea['topic']} | {idea.get('hook', '')}")
         elif topic:
             brief = {"topik_wajib": f"kamu jadi {topic}", "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
         three = style == "3d"
-        writer, checker = prompts(three, ending)
-        log(f"ending: {ending}")
+        writer, checker = prompts(three, ending, mode)
+        log(f"ending: {ending}, mode: {mode}")
         draft = claude_json("opus", writer, json.dumps(brief, ensure_ascii=False), web=True)
         save(d / "script.draft.json", draft)
         fix = tidy3d if three else tidy
@@ -482,7 +539,10 @@ def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None):
             s = fix(again.get("script") or s)
             if cliffhanger(s):
                 raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
-        s["ending"] = ending
+        s["ending"], s["mode"] = ending, mode
+        if s.get("seri"):
+            s["episode"] = episode(s["seri"])
+            log(f"seri: {s['seri']} ep. {s['episode']}")
         with open(ROOT / "data" / "ab_ending.jsonl", "a") as fh:
             fh.write(json.dumps({"run": rid, "ending": ending, "title": s.get("yt_title")}, ensure_ascii=False) + "\n")
     save(d / "script.json", s)
@@ -500,6 +560,10 @@ def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None):
     print("STAGE render", flush=True)
     render(d, pub)
     shutil.rmtree(pub / "sfx", ignore_errors=True)
+    if s.get("seri") and s.get("episode") and slot:  # counted once the episode exists; test runs are not
+        with open(ROOT / "data" / "series.jsonl", "a") as fh:
+            fh.write(json.dumps({"run": rid, "seri": s["seri"], "episode": s["episode"], "mode": s.get("mode"),
+                                 "title": s.get("yt_title")}, ensure_ascii=False) + "\n")
     log("done:", d / "final.mp4", f"{duration(d / 'final.mp4'):.1f} s")
 
 
@@ -511,4 +575,4 @@ if __name__ == "__main__":
         idea = next((i for i in load(a[k + 1])["ideas"] if i.get("slot") == a[k + 2]), None)
     main(a[0], a[a.index("--script") + 1] if "--script" in a else None,
          a[a.index("--topic") + 1] if "--topic" in a else None, idea, a[a.index("--style") + 1] if "--style" in a else None,
-         a[a.index("--ending") + 1] if "--ending" in a else None)
+         a[a.index("--ending") + 1] if "--ending" in a else None, a[a.index("--mode") + 1] if "--mode" in a else None)

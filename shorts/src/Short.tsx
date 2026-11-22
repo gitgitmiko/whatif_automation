@@ -12,7 +12,7 @@ export type Scene = {
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
 };
 // narration: one voice track for the whole video (Gemini); without it each scene plays its own audio (edge-tts).
-export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string};
+export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string; series?: string; mode?: string};
 
 const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
@@ -51,7 +51,7 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration}) => (
+const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, mode}) => (
   <AbsoluteFill style={{background: '#000'}}>
     {narration && <Audio src={staticFile(narration)} />}
     {scenes.map((s, i) => {
@@ -75,7 +75,7 @@ const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration}) => (
         )}
       </Sequence>
     ))}
-    <TopTag title={title} from={hook ? HOOK_FRAMES : 0} />
+    <TopTag title={title} from={hook ? HOOK_FRAMES : 0} series={series} horror={mode === 'horor'} />
     <HookCard text={hook ?? ''} />
   </AbsoluteFill>
 );

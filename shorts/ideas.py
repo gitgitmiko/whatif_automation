@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import claude_json, load, log, save  # noqa: E402
+from produce import MODE_BY_SLOT, SERIES  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
 YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
@@ -106,17 +107,43 @@ Tugas:
    - satu profesi sehari-hari yang akrab di Indonesia (driver ojol, kasir minimarket, tukang parkir, satpam, petugas tol, montir bengkel, penjual bakso, kurir paket, petugas SPBU, dll.),
    - satu profesi berbahaya atau berisiko tinggi (pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN di tiang, ABK kapal, penambang, petugas jalan tol malam, dll.),
    - satu profesi di balik layar yang jarang dilihat orang (petugas menara ATC, dokter IGD, operator bendungan, penjaga mercusuar, teknisi lift, petugas forensik, penerjemah bahasa isyarat, dll.).
-   Setiap ide berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Boleh pakai pencarian web untuk memastikan faktanya.
-3. Hormati profesinya: nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
-4. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
+   Rumus tiap ide: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir). Ide pagi dan sore bermode "fakta": berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Ide malam bermode "horor": cerita horor FIKSI orisinal di pekerjaan nyata (paling cocok profesi shift malam atau tempat sepi), ketakutan dari detail janggal (CCTV, jam, panggilan, pintu terkunci, suara dari ruang kosong) tanpa darah, sadis, atau agama/ritual tertentu, tetap dengan 2-3 fakta nyata tentang prosedur atau alat profesinya. Boleh pakai pencarian web untuk memastikan faktanya.
+   Tiap ide masuk SATU seri: {SERIES}.
+3. Hormati profesinya (horor pun tanpa humor dan tanpa merendahkan): nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
+4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: dua dari tiga ide adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), satu ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
+5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
 
 Balas HANYA JSON:
 {"insight":"3-5 kalimat: pola yang sedang menang hari ini",
- "ideas":[{"slot":"pagi|sore|malam","topic":"nama profesi singkat, misalnya pilot pesawat",
+ "ideas":[{"slot":"pagi|sore|malam","mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
    "angle":"1-2 kalimat: momen krisis yang dialami dan rasa penasaran yang dijual",
    "hook":"draf kalimat pertama dengan sudut pandang 'kamu': langsung di tengah krisis, ada taruhan nyata (nyawa, uang, waktu, malu), maks 14 kata, tanpa 'gimana jadinya'",
-   "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek"],
+   "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek (horor: fakta nyata tentang profesinya, plus 1 kalimat twist fiksinya)"],
    "inspired_by":[{"title":"...","views":123,"why":"apa yang ditiru: pola, bukan isi"}]}]}"""
+
+
+def own_performance():
+    """The channel's own Shorts from data/analytics (pulled daily by n8n): best and weakest, with where viewers left."""
+    f = ROOT / "data" / "analytics" / "videos.json"
+    if not f.exists():
+        return None
+    vids = [v for v in load(f).get("videos", []) if v.get("run") and v.get("views") is not None]
+    if len(vids) < 6:
+        return None
+    def row(v):
+        r = {k: v.get(k) for k in ("title", "seri", "mode", "slot", "views", "averageViewPercentage", "averageViewDuration")}
+        curve = ROOT / "data" / "analytics" / "retention" / f"{v['video']}.json"
+        pts = load(curve).get("curve", []) if curve.exists() else []
+        # the first point where fewer than 60% are still watching: where the video loses people
+        r["turun_di_detik"] = next((round(p["t"] * (v.get("averageViewDuration") or 0) / max((v.get("averageViewPercentage") or 100) / 100, 0.01), 1)
+                                    for p in pts if p.get("watch") is not None and p["watch"] < 0.6), None)
+        return r
+    vids.sort(key=lambda v: (v.get("views") or 0), reverse=True)
+    return {"terbaik": [row(v) for v in vids[:6]], "terlemah": [row(v) for v in vids[-4:]],
+            "rata_rata_views": round(sum(v["views"] for v in vids) / len(vids))}
+
+
+SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
 
 
 def main(day=None):
@@ -130,6 +157,10 @@ def main(day=None):
     print("STAGE ide", flush=True)
     brief = {"tanggal": day, "outlier_channel": outliers, "pencarian_bulan_ini": hits,
              "topik_yang_sudah_pernah_dibuat": recent_topics()}
+    own = own_performance()
+    if own:
+        brief["performa_channel_sendiri"] = own
+        log(f"own analytics: {len(own['terbaik'])} best, {len(own['terlemah'])} weakest")
     out = claude_json("opus", SYS, json.dumps(brief, ensure_ascii=False), web=True)
     ideas = {i.get("slot"): i for i in out.get("ideas", []) if i.get("topic")}
     if not all(s in ideas for s in SLOTS):  # slots mislabelled: hand them out in order
@@ -138,6 +169,9 @@ def main(day=None):
         raise RuntimeError("no ideas in Claude's reply")
     for s, i in ideas.items():
         i["slot"] = s
+        i["mode"] = MODE_BY_SLOT[s] if s in MODE_BY_SLOT else i.get("mode", "fakta")
+        if i.get("seri") not in SERIES:
+            i.pop("seri", None)
         log(f"{s}: kamu jadi {i['topic']} | {i.get('hook', '')}")
     save(IDEAS / f"{day}.json", {"date": day, "insight": out.get("insight"), "ideas": list(ideas.values()),
                                  "data": {"outliers": outliers, "search": hits}})

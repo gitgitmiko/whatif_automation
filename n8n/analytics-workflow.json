@@ -1,0 +1,328 @@
+{
+ "id": "gimana-analytics",
+ "name": "GIMANA JADINYA? — Analytics harian 05:30",
+ "active": true,
+ "nodes": [
+  {
+   "id": "a1",
+   "name": "Jadwal 05:30",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "30 5 * * *"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "a2",
+   "name": "Tes manual",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    200
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "a8",
+   "name": "Jalankan via webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    400
+   ],
+   "parameters": {
+    "path": "gimana-analytics-30ba541f9403",
+    "httpMethod": "GET",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "webhookId": "gimana-analytics-run"
+  },
+  {
+   "id": "a3",
+   "name": "Laporan per video",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    240,
+    100
+   ],
+   "parameters": {
+    "url": "https://youtubeanalytics.googleapis.com/v2/reports",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "googleOAuth2Api",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "ids",
+       "value": "channel==MINE"
+      },
+      {
+       "name": "startDate",
+       "value": "2026-11-01"
+      },
+      {
+       "name": "endDate",
+       "value": "={{ $now.setZone('Asia/Jakarta').toFormat('yyyy-MM-dd') }}"
+      },
+      {
+       "name": "dimensions",
+       "value": "video"
+      },
+      {
+       "name": "sort",
+       "value": "-views"
+      },
+      {
+       "name": "maxResults",
+       "value": "200"
+      },
+      {
+       "name": "metrics",
+       "value": "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,subscribersGained"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 60000
+    }
+   },
+   "credentials": {
+    "googleOAuth2Api": {
+     "id": "d9tDBy3bXzQglgXa",
+     "name": "Google account"
+    }
+   },
+   "onError": "continueRegularOutput"
+  },
+  {
+   "id": "a4",
+   "name": "Kirim ke server",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    480,
+    100
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "http://172.18.0.1:8798/api/stats",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ report: $json }) }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "a5",
+   "name": "Video 30 hari",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    720,
+    100
+   ],
+   "parameters": {
+    "url": "http://172.18.0.1:8798/api/stats/targets",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "a6",
+   "name": "Retensi",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    960,
+    100
+   ],
+   "parameters": {
+    "url": "https://youtubeanalytics.googleapis.com/v2/reports",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "googleOAuth2Api",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "ids",
+       "value": "channel==MINE"
+      },
+      {
+       "name": "startDate",
+       "value": "2026-11-01"
+      },
+      {
+       "name": "endDate",
+       "value": "={{ $now.setZone('Asia/Jakarta').toFormat('yyyy-MM-dd') }}"
+      },
+      {
+       "name": "dimensions",
+       "value": "elapsedVideoTimeRatio"
+      },
+      {
+       "name": "metrics",
+       "value": "audienceWatchRatio,relativeRetentionPerformance"
+      },
+      {
+       "name": "filters",
+       "value": "=video=={{ $json.youtube_id }}"
+      }
+     ]
+    },
+    "options": {
+     "timeout": 60000
+    }
+   },
+   "credentials": {
+    "googleOAuth2Api": {
+     "id": "d9tDBy3bXzQglgXa",
+     "name": "Google account"
+    }
+   },
+   "onError": "continueRegularOutput"
+  },
+  {
+   "id": "a7",
+   "name": "Kirim retensi",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1200,
+    100
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "http://172.18.0.1:8798/api/stats/retention",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Token",
+       "value": "<SERVICE_TOKEN dari .env>"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ youtube_id: $('Video 30 hari').item.json.youtube_id, report: $json }) }}",
+    "options": {}
+   }
+  }
+ ],
+ "connections": {
+  "Jadwal 05:30": {
+   "main": [
+    [
+     {
+      "node": "Laporan per video",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tes manual": {
+   "main": [
+    [
+     {
+      "node": "Laporan per video",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Jalankan via webhook": {
+   "main": [
+    [
+     {
+      "node": "Laporan per video",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Laporan per video": {
+   "main": [
+    [
+     {
+      "node": "Kirim ke server",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Kirim ke server": {
+   "main": [
+    [
+     {
+      "node": "Video 30 hari",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Video 30 hari": {
+   "main": [
+    [
+     {
+      "node": "Retensi",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Retensi": {
+   "main": [
+    [
+     {
+      "node": "Kirim retensi",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Jakarta",
+  "saveManualExecutions": true
+ }
+}
