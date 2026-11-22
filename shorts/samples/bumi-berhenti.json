@@ -1,0 +1,15 @@
+{"title": "Kalau Bumi berhenti berputar?",
+ "yt_title": "Gimana Jadinya Kalau Bumi Berhenti Berputar?",
+ "description": "Bumi membawamu melesat 1.660 km/jam tanpa kamu sadari. Apa yang terjadi kalau putarannya berhenti mendadak?",
+ "tags": ["gimana jadinya", "bumi berhenti berputar", "sains", "fakta unik"],
+ "sources": ["https://en.wikipedia.org/wiki/Earth%27s_rotation"],
+ "scenes": [
+  {"text": "Gimana jadinya kalau Bumi tiba-tiba berhenti berputar? Bahkan cuma sedetik?", "visual": {"type": "globe", "mode": "stop", "stamp": "STOP!"}, "cue": "berhenti", "sfx": "sub-drop"},
+  {"text": "Sekarang pun kamu sedang melesat. Di Jakarta, putaran Bumi membawamu sekitar 1.660 km/jam.", "visual": {"type": "gauge", "value": 1660, "unit": "km/jam", "label": "📍 Jakarta", "max": 2000}, "cue": "1.660", "sfx": "riser"},
+  {"text": "Itu lebih cepat dari pesawat, bahkan lebih cepat dari suara.", "visual": {"type": "bars", "unit": "km/jam", "items": [{"label": "Kamu", "value": 1660, "emoji": "🧍", "highlight": true}, {"label": "Pesawat", "value": 900, "emoji": "✈️", "at": "pesawat"}, {"label": "Suara", "value": 1235, "emoji": "🔊", "at": "suara"}]}, "sfx": "pop"},
+  {"text": "Kalau Bumi berhenti, tanah ikut diam. Tapi kamu, mobil, dan rumah tetap melesat ke timur.", "visual": {"type": "fly", "emojis": ["🏠", "🚗", "🧍"], "direction": "right", "ground": true, "stamp": "MELESAT →"}, "cue": "melesat", "sfx": "slam"},
+  {"text": "Udara juga. Angin secepat suara menyapu daratan, tiga kali lebih kencang dari tornado terkuat yang pernah tercatat.", "visual": {"type": "wind", "emoji": "🌴", "stamp": "3× TORNADO"}, "cue": "tiga", "sfx": "boom"},
+  {"text": "Lautan ikut terlempar, menerjang pantai jadi tsunami raksasa.", "visual": {"type": "rise", "fluid": "water", "stamp": "TSUNAMI RAKSASA"}, "cue": "tsunami", "sfx": "splash"},
+  {"text": "Dan kalau Bumi tak pernah berputar lagi, satu hari lamanya setahun. Enam bulan siang, enam bulan malam.", "visual": {"type": "globe", "mode": "night", "stamp": "1 HARI = 1 TAHUN"}, "cue": "setahun", "sfx": "sparkle"},
+  {"text": "Untung itu tidak akan terjadi. Kamu mau tahu gimana jadinya kalau apa lagi? Tulis di komentar!", "visual": {"type": "outro"}, "cue": "kamu", "sfx": "question"}
+ ]}

@@ -1,0 +1,13 @@
+{"title": "Kalau semua jenis visual muncul?",
+ "yt_title": "Uji visual", "description": "uji", "tags": [], "sources": [],
+ "scenes": [
+  {"text": "Gimana jadinya kalau Matahari tiba-tiba meledak di depan mata?", "visual": {"type": "icon", "emoji": "☀️", "motion": "explode", "stamp": "BOOM!"}, "cue": "meledak", "sfx": "boom"},
+  {"text": "Bumi akan memanas sampai membara dalam hitungan menit.", "visual": {"type": "globe", "mode": "hot", "stamp": "MEMBARA"}, "cue": "membara", "sfx": "riser"},
+  {"text": "Suhu di Jakarta bisa naik sampai 60 derajat Celsius.", "visual": {"type": "thermo", "value": 60, "unit": "°C", "min": 0, "max": 80, "label": "Suhu Jakarta"}, "cue": "60", "sfx": "heartbeat"},
+  {"text": "Dulu kita santai di pantai, sekarang kita kepanasan.", "visual": {"type": "versus", "left": {"emoji": "🏖️", "label": "Dulu"}, "right": {"emoji": "🥵", "label": "Sekarang"}, "stamp": "PANAS!"}, "cue": "sekarang", "sfx": "pop"},
+  {"text": "Delapan miliar manusia harus mengungsi bersamaan.", "visual": {"type": "swarm", "emoji": "🧍", "count_label": "8 miliar"}, "cue": "mengungsi", "sfx": "machine"},
+  {"text": "Dalam satu detik listrik padam, satu jam air menguap, satu hari semuanya sunyi.", "visual": {"type": "timeline", "steps": [{"time": "1 detik", "emoji": "⚡", "label": "Listrik padam", "at": "detik"}, {"time": "1 jam", "emoji": "💧", "label": "Air menguap", "at": "jam"}, {"time": "1 hari", "emoji": "🌑", "label": "Sunyi", "at": "hari"}]}, "sfx": "clock"},
+  {"text": "Cahayanya butuh 8 menit untuk sampai ke Bumi.", "visual": {"type": "number", "value": 8, "unit": "menit", "label": "waktu tempuh cahaya", "emoji": "💡"}, "cue": "8", "sfx": "sparkle"},
+  {"text": "Semuanya akan membeku dan Bumi jadi bola es.", "visual": {"type": "globe", "mode": "frozen", "stamp": "BEKU"}, "cue": "membeku", "sfx": "glass"},
+  {"text": "Mau topik apa lagi? Tulis di komentar!", "visual": {"type": "outro"}, "cue": "mau", "sfx": "question"}
+ ]}

@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 API = "http://172.18.0.1:8798"
-YT_CRED = {"youTubeOAuth2Api": {"id": "jangansendirian-youtube", "name": "YouTube Jangan Sendirian"}}  # horror channel
+YT_CRED = {"youTubeOAuth2Api": {"id": "jangansendirian-youtube", "name": "YouTube Jangan Sendirian"}}  # now Gimana Jadinya?
 READY = "$('Cek video siap').item.json.body"
 
 
@@ -26,13 +26,13 @@ def mark(i, name, pos, what, body):
 
 nodes = [
     node(1, "Jadwal", "scheduleTrigger", 1.2, [0, 0], {"rule": {"interval": [
-        {"field": "cronExpression", "expression": e} for e in ("0 12 * * *", "30 12 * * *", "0 18 * * *", "30 18 * * *")]}}),
+        {"field": "cronExpression", "expression": e} for e in ("0 10 * * *", "30 10 * * *", "0 15 * * *", "30 15 * * *", "0 20 * * *", "30 20 * * *")]}}),
     node(2, "Tes manual", "manualTrigger", 1, [0, 200], {}),
     node(3, "Pengaturan", "code", 2, [240, 100], {"jsCode":
-        "// 12:00/12:30 upload the 'siang' video, 18:00/18:30 the 'sore' one (the :30 run is a retry: it finds nothing if :00 worked).\n"
+        "// 10:00 uploads the 'pagi' Short, 15:00 'sore', 20:00 'malam'; the :30 run is a retry (it finds nothing if :00 worked).\n"
         "// Change privacy to 'unlisted' or 'private' to review videos before they go public.\n"
         "const hour = $now.setZone('Asia/Jakarta').hour;\n"
-        "return [{ json: { slot: hour < 15 ? 'siang' : 'sore', privacy: 'public' } }];"}),
+        "return [{ json: { slot: hour < 13 ? 'pagi' : hour < 18 ? 'sore' : 'malam', privacy: 'public' } }];"}),
     node(4, "Cek video siap", "httpRequest", 4.2, [480, 100], {
         "url": f"={API}/api/ready?slot={{{{ $json.slot }}}}", "sendHeaders": True, "headerParameters": header(),
         "options": {"timeout": 30000, "response": {"response": {"fullResponse": True, "neverError": True}}}}),
@@ -45,7 +45,7 @@ nodes = [
         "options": {"timeout": 600000, "response": {"response": {"responseFormat": "file", "outputPropertyName": "data"}}}}),
     node(7, "Upload YouTube", "youTube", 1, [1200, 0], {
         "resource": "video", "operation": "upload", "title": f"={{{{ {READY}.title }}}}", "regionCode": "ID",
-        "categoryId": "27", "binaryProperty": "data", "options": {
+        "categoryId": "28", "binaryProperty": "data", "options": {
             "description": f"={{{{ {READY}.description }}}}", "tags": f"={{{{ {READY}.tags.join(',') }}}}",
             "privacyStatus": "={{ $('Pengaturan').item.json.privacy }}", "defaultLanguage": "id",
             "selfDeclaredMadeForKids": False, "notifySubscribers": True}},
@@ -75,7 +75,7 @@ connections = {
     "Ada thumbnail?": [["Ambil thumbnail"], []], "Ambil thumbnail": [["Pasang thumbnail"]],
 }
 workflow = {
-    "id": "whatif-longform", "name": "JANGAN SENDIRIAN — horor POV 5-8 menit (12:00)", "active": True,
+    "id": "whatif-longform", "name": "GIMANA JADINYA? — Shorts 10:00, 15:00, 20:00", "active": True,
     "nodes": nodes,
     "connections": {k: {"main": [[{"node": n, "type": "main", "index": 0} for n in out] for out in v]}
                     for k, v in connections.items()},

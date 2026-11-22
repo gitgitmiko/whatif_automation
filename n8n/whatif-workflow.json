@@ -1,6 +1,6 @@
 {
  "id": "whatif-longform",
- "name": "JANGAN SENDIRIAN — horor POV 5-8 menit (12:00)",
+ "name": "GIMANA JADINYA? — Shorts 10:00, 15:00, 20:00",
  "active": true,
  "nodes": [
   {
@@ -17,19 +17,27 @@
      "interval": [
       {
        "field": "cronExpression",
-       "expression": "0 12 * * *"
+       "expression": "0 10 * * *"
       },
       {
        "field": "cronExpression",
-       "expression": "30 12 * * *"
+       "expression": "30 10 * * *"
       },
       {
        "field": "cronExpression",
-       "expression": "0 18 * * *"
+       "expression": "0 15 * * *"
       },
       {
        "field": "cronExpression",
-       "expression": "30 18 * * *"
+       "expression": "30 15 * * *"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "0 20 * * *"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "30 20 * * *"
       }
      ]
     }
@@ -56,7 +64,7 @@
     100
    ],
    "parameters": {
-    "jsCode": "// 12:00/12:30 upload the 'siang' video, 18:00/18:30 the 'sore' one (the :30 run is a retry: it finds nothing if :00 worked).\n// Change privacy to 'unlisted' or 'private' to review videos before they go public.\nconst hour = $now.setZone('Asia/Jakarta').hour;\nreturn [{ json: { slot: hour < 15 ? 'siang' : 'sore', privacy: 'public' } }];"
+    "jsCode": "// 10:00 uploads the 'pagi' Short, 15:00 'sore', 20:00 'malam'; the :30 run is a retry (it finds nothing if :00 worked).\n// Change privacy to 'unlisted' or 'private' to review videos before they go public.\nconst hour = $now.setZone('Asia/Jakarta').hour;\nreturn [{ json: { slot: hour < 13 ? 'pagi' : hour < 18 ? 'sore' : 'malam', privacy: 'public' } }];"
    }
   },
   {
@@ -166,7 +174,7 @@
     "operation": "upload",
     "title": "={{ $('Cek video siap').item.json.body.title }}",
     "regionCode": "ID",
-    "categoryId": "27",
+    "categoryId": "28",
     "binaryProperty": "data",
     "options": {
      "description": "={{ $('Cek video siap').item.json.body.description }}",
