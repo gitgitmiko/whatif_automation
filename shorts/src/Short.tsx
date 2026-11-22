@@ -5,13 +5,13 @@ import {
 import {Captions} from './Captions';
 import {Stars, VISUALS, Visual, Word, cueFrame} from './visuals';
 import {Hero, HeroContext, Pov, PovOutro, THEMES} from './hero';
-import {ImageScene, Label, SoftCaptions, TopTag, XFADE} from './scene3d';
+import {HOOK_FRAMES, HookCard, ImageScene, Label, TopTag, XFADE} from './scene3d';
 
 export type Scene = {
   text: string; visual: Visual; cue?: string; sfx?: string; audio: string; audioFrom: number;
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
 };
-export type ShortProps = {title: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string};
+export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string};
 
 const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
@@ -50,7 +50,7 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-const Short3D: React.FC<ShortProps> = ({title, scenes}) => (
+const Short3D: React.FC<ShortProps> = ({title, hook, scenes}) => (
   <AbsoluteFill style={{background: '#000'}}>
     {scenes.map((s, i) => {
       const lead = i ? XFADE : 0;  // each picture dissolves in over the end of the one before
@@ -63,7 +63,7 @@ const Short3D: React.FC<ShortProps> = ({title, scenes}) => (
     {scenes.map((s, i) => (
       <Sequence key={i} from={s.from} durationInFrames={s.frames} name={`${i} ${s.camera ?? ''}`}>
         <Label scene={s} />
-        <SoftCaptions words={s.words} />
+        <Captions words={s.words} top={1150} />
         <Audio src={staticFile(s.audio)} startFrom={s.audioFrom} />
         {i > 0 && <Audio src={staticFile('sfx/whoosh.wav')} volume={0.15} />}
         {s.sfx && (
@@ -73,7 +73,8 @@ const Short3D: React.FC<ShortProps> = ({title, scenes}) => (
         )}
       </Sequence>
     ))}
-    <TopTag title={title} />
+    <TopTag title={title} from={hook ? HOOK_FRAMES : 0} />
+    <HookCard text={hook ?? ''} />
   </AbsoluteFill>
 );
 

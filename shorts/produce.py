@@ -1,6 +1,6 @@
 """One "Gimana Jadinya?" Short, start to finish, into runs/<id>/:
 
-  naskah  Claude (with web search) picks a fresh "gimana jadinya kalau kamu jadi …" (a machine, object, animal…) and
+  naskah  Claude (with web search) picks a fresh "gimana jadinya kalau kamu jadi …" (a profession: pilot, ojol, SAR…) and
           writes a point-of-view narration, scene by scene: the hero (src/hero.tsx) with a mood and a speech bubble,
           or a fact visual from the Remotion library in src/visuals.tsx                        -> script.draft.json
   cek     a second Claude pass checks every claim and number on the web and fixes them        -> script.json
@@ -52,36 +52,38 @@ LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF
 - {"type":"wind","emoji":"🌴","stamp":"..."}  angin kencang menerpa sesuatu.
 "stamp" opsional, maks 3 kata / 18 huruf, menegaskan momen di kata cue (contoh "STOP!", "3× LEBIH KENCANG", "TSUNAMI RAKSASA"). Emoji harus emoji Unicode standar yang umum. Tokoh adalah bintangnya: kira-kira separuh adegan memakai "pov" (moodnya berganti-ganti mengikuti cerita), sisanya visual fakta yang mendukung angka. Jenis selain pov jangan dipakai lebih dari 2 kali."""
 
-WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video mengajak penonton membayangkan "gimana jadinya kalau KAMU jadi <sesuatu>", lalu menjalani hidup sebagai benda/makhluk itu, penuh fakta nyata yang mengejutkan, dalam animasi grafis 35-50 detik. Penonton: orang Indonesia umum, remaja sampai dewasa.
+WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video mengajak penonton membayangkan "gimana jadinya kalau KAMU jadi <profesi>", lalu menjalani SATU momen paling menegangkan dari pekerjaan itu, penuh fakta nyata yang mengejutkan, dalam animasi grafis 35-50 detik. Penonton: orang Indonesia umum, remaja sampai dewasa.
 
-1. Pilih SATU "sesuatu" yang nyeleneh tapi akrab: mesin dan benda sehari-hari (mesin ATM, vending machine, lift, eskalator, lampu merah, rice cooker, mesin cuci, kulkas, uang koin 500, kasur hotel, tiang listrik, galon, colokan, gerobak bakso, kartu e-toll, satelit), hewan kecil (nyamuk, semut, kecoak, cicak), atau bagian tubuh (lidah, gigi geraham). Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata, hal jorok, dan hal sadis.
-2. Riset dengan pencarian web: cari 4-6 fakta NYATA dan mengejutkan tentang benda itu (cara kerjanya, angka, sejarah, kejadian yang dialaminya setiap hari, terutama di Indonesia). Setiap angka dan klaim harus benar menurut sumber tepercaya (bank sentral, produsen, lembaga resmi, jurnal, ensiklopedia, media besar). Kalau angka berupa perkiraan, katakan "sekitar" atau "diperkirakan".
-3. Tulis narasi Bahasa Indonesia santai (pakai "kamu", sudut pandang si benda), total 70-100 kata (30-40 detik), dalam 6-8 adegan, tiap adegan 5-18 kata. Ikuti pola Shorts edukasi paling laris (Zack D. Films, median 10 juta views):
-   a. KALIMAT PERTAMA LANGSUNG DI TENGAH AKSI. Judul "Kalau kamu jadi ..." sudah tampil di layar sejak detik pertama, jadi narasi TIDAK BOLEH membuka dengan "Gimana jadinya kalau", pertanyaan, salam, atau perkenalan. Buka dengan momen paling dramatis atau aneh yang SEDANG terjadi padamu sebagai benda itu, maksimal 14 kata, konkret dan bisa digambar, dan HARUS mengandung konflik: bahaya, rasa sakit, serangan, kejadian aneh pada tubuhmu, atau angka yang tidak masuk akal. Suasana biasa ("antrean panjang", "kamu bangun pagi") BUKAN hook. Tulis dulu 5 kandidat di "hook_candidates", lalu pakai yang paling bikin orang berhenti scroll sebagai kalimat pertama dan bangun cerita dari situ. Contoh pola: "Kartu ketiga malam ini nyangkut di mulutmu, dan pemiliknya mulai menendangmu." / "Jam 3 pagi, seseorang mencongkel wajahmu pakai linggis." / "Tetes darah pertama masuk ke perutmu, dan berat badanmu langsung naik tiga kali lipat."
+1. Pilih SATU profesi nyata yang dikenal orang Indonesia (sehari-hari seperti driver ojol, kasir minimarket, tukang parkir, satpam; berbahaya seperti pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN; atau di balik layar seperti petugas menara ATC, dokter IGD, operator bendungan) dan SATU momen krisis atau keputusan sulit yang benar-benar bisa dialami profesi itu. Hormati profesinya: nada kagum dan empatik, BUKAN mengejek. Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata tertentu, polisi/tentara dalam konteks kontroversial, hal jorok, dan hal sadis.
+2. Riset dengan pencarian web: cari 4-6 fakta NYATA dan mengejutkan tentang profesi itu dan momen krisisnya (prosedur resmi, alat, aturan keselamatan, angka, batas waktu, jam kerja atau penghasilan bila relevan, terutama di Indonesia). Setiap angka dan klaim harus benar menurut sumber tepercaya (bank sentral, produsen, lembaga resmi, jurnal, ensiklopedia, media besar). Kalau angka berupa perkiraan, katakan "sekitar" atau "diperkirakan".
+3. Tulis narasi Bahasa Indonesia santai (pakai "kamu", sudut pandang orang yang menjalani profesi itu), total 70-100 kata (30-40 detik), dalam 6-8 adegan, tiap adegan 5-18 kata. Ikuti pola Shorts edukasi paling laris (Zack D. Films, median 10 juta views):
+   a. KALIMAT PERTAMA LANGSUNG DI TENGAH AKSI. Judul "Kalau kamu jadi ..." sudah tampil di layar sejak detik pertama, jadi narasi TIDAK BOLEH membuka dengan "Gimana jadinya kalau", pertanyaan, salam, atau perkenalan. Buka dengan momen paling dramatis yang SEDANG terjadi padamu saat bekerja, maksimal 14 kata, konkret dan bisa digambar, dan HARUS mengandung taruhan nyata: nyawa (milikmu atau orang lain), uang, batas waktu, atau malu besar. Suasana biasa ("kamu berangkat kerja", "hari pertama kerja") BUKAN hook. Tulis dulu 5 kandidat di "hook_candidates", beri tiap kandidat nilai 1-10 di "hook_scores" (taruhan terbesar + paling mudah dibayangkan dalam 1 detik = nilai tertinggi), lalu WAJIB pakai kandidat bernilai tertinggi sebagai kalimat pertama dan bangun cerita dari situ. Contoh pola: "Ketinggian 300 meter, dan sesuatu baru saja menghantam kaca kokpitmu." / "Gagang pintu itu panas, dan asap hitam keluar dari celah bawahnya." / "Kamu terima selembar seratus ribu, dan teksturnya terasa aneh di jarimu."
    b. Lalu jelaskan KENAPA itu terjadi dengan fakta nyata ("Soalnya...", "Ternyata..."), satu rantai sebab-akibat, BUKAN daftar fakta yang dilompat-lompat. Setiap adegan menyambung ke adegan berikutnya dengan "Lalu", "Tapi", "Makanya", "Masalahnya".
    c. Di tengah, satu belokan: "Tapi ada satu masalah..." atau fakta yang membalik dugaan penonton.
-   d. Tutup dengan punchline atau fakta paling mengejutkan, lalu BERHENTI. Tanpa ajakan komentar, tanpa "kamu mau jadi apa", tanpa kesimpulan. Idealnya kalimat terakhir menyambung lagi ke kalimat pertama sehingga video terasa berulang (loop).
-   e. Humor dari situasi dan sudut pandang benda, khas Indonesia (tanggal gajian, mati lampu, mudik), bukan mengejek orang.
+   d. Tutup dengan punchline atau fakta paling mengejutkan, lalu BERHENTI. Tanpa ajakan komentar, tanpa "kamu mau jadi apa", tanpa kesimpulan. WAJIB loop: kalimat terakhir menggantung dan menyambung mulus ke kalimat pertama (misalnya diakhiri "...dan saat itulah" yang membuat kalimat pembuka terasa sebagai lanjutannya), sehingga video terasa berulang dan penonton menonton ulang tanpa sadar.
+   e. Boleh ada humor ringan dari situasi kerja khas Indonesia (tanggal gajian, macet, mudik, pelanggan rewel), tapi ketegangan tetap jadi tulang punggung; jangan mengejek profesi atau orang.
 4. Angka ditulis dengan digit format Indonesia (1.660, 8 miliar, 3,5) supaya terbaca di caption; satuan ditulis seperti diucapkan: "kilogram", "derajat Celsius", "persen", "rupiah" (Rp 100 ribu ditulis "100 ribu rupiah"). Hindari kata bahasa Inggris dan singkatan yang sulit dibaca mesin suara.
-5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
+5. "hero" menggambarkan tokohmu, sama di semua adegan: "name" (nama pendek benda), "body" ("box" untuk mesin/benda kotak seperti ATM, vending machine, kulkas, lift; "emoji" untuk lainnya), "emoji" (box: lambang di dada mesin, misalnya 💵 untuk ATM, 🥤 untuk vending machine; emoji: emoji standar yang paling mirip bendanya, misalnya 🦟 🪙 🍚), "color" (warna badan hex, misalnya "#1f8a4c"; hanya untuk box), Untuk profesi pakai body "emoji" dengan emoji profesi standar (👨‍✈️ 🧑‍🚒 🧑‍⚕️ 👷 🧑‍🔧 💂 🧑‍🍳) dan face false. "face" (true HANYA kalau emojinya menghadap depan dengan bidang polos di tengah untuk ditempeli mata dan mulut, misalnya 🪙 🍚 🥚 🧻 🎈 🍩 🧊; false untuk emoji yang tampak samping atau sudah punya wajah, misalnya 🐜 🦟 🪳 🦎 🚗, maka tokoh memakai emoji reaksi sesuai mood). "theme" adalah latar: {", ".join(THEMES)}.
 6. Tiap adegan: "text" (narasi), "visual" (dari daftar di bawah, isinya harus sesuai dengan narasi dan angkanya sama persis), "cue" (SATU kata yang ada persis di text adegan itu, saat aksi utama/stamp terjadi), "sfx" (satu dari: {", ".join(f"{k} ({v})" for k, v in SFX.items())}; boleh kosong).
 
 {LIBRARY}
 
 Balas HANYA JSON:
 {{"title":"Kalau Kamu Jadi ...?" (maks 42 huruf, tampil di bawah label GIMANA JADINYA? sepanjang video),
- "yt_title":"..." (maks 70 huruf: pernyataan yang memancing rasa penasaran, jujur, diawali "Kalau Kamu Jadi <benda>," atau "Jadi <benda>:", diakhiri satu emoji, contoh "Kalau Kamu Jadi Mesin ATM, Kartu Ini Musuh Terbesarmu 😨"),
+ "hook_text":"..." (teks raksasa di layar pada detik 0-2: maks 4 kata + 1 emoji, merangkum krisisnya, huruf besar, contoh "PILOT VS BURUNG 💥", "GAGANG PINTU PANAS 🔥", "UANG PALSU? 😳"),
+ "yt_title":"..." (maks 70 huruf: pernyataan yang memancing rasa penasaran, jujur, diawali "Kalau Kamu Jadi <profesi>," atau "Jadi <profesi>:", diakhiri satu emoji, contoh "Kalau Kamu Jadi Pilot, Burung Sekecil Ini Bisa Mematikan Mesinmu 😨"),
  "description":"2-3 kalimat ringkasan menarik",
  "tags":["8-12 tag"],
  "sources":["2-4 URL sumber yang benar-benar kamu pakai"],
  "hook_candidates":["5 kandidat kalimat pertama"],
+ "hook_scores":[8,5,9,6,7],
  "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
  "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"..."}}]}}"""
 
 CHECK_SYS = f"""Kamu pemeriksa fakta dan editor naskah YouTube Shorts "Gimana Jadinya?" (format point of view: "gimana jadinya kalau kamu jadi <sesuatu>"). Kamu menerima naskah JSON.
 1. Periksa SETIAP klaim dan angka di narasi DAN di visual dengan pencarian web ke sumber tepercaya. Perbaiki yang salah atau berlebihan; samakan angka di visual dengan narasi. Klaim spekulatif harus ditandai "menurut perkiraan ilmuwan" atau sejenisnya.
-2. Pastikan aturan: 6-8 adegan; total 70-100 kata; kalimat pertama langsung di tengah aksi dengan konflik (bahaya, sakit, serangan, keanehan; maks 14 kata, TIDAK diawali "Gimana jadinya", pertanyaan, atau perkenalan; kalau melanggar, tulis ulang kalimat pertamanya); adegan saling menyambung sebagai satu rantai sebab-akibat dengan satu belokan; penutup berhenti di punchline tanpa ajakan komentar atau pertanyaan ke penonton; kira-kira separuh adegan visual pov dengan mood yang berganti dan props yang memperagakan kalimat; "say" maks 5 kata dan tidak mengulang narasi; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; visual sesuai daftar berikut.
+2. Pastikan aturan: 6-8 adegan; total 70-100 kata; kalimat pertama langsung di tengah aksi dengan konflik (bahaya, sakit, serangan, keanehan; maks 14 kata, TIDAK diawali "Gimana jadinya", pertanyaan, atau perkenalan; kalau melanggar, tulis ulang kalimat pertamanya); kalimat pertama adalah kandidat dengan nilai tertinggi di "hook_scores" bila ada; adegan saling menyambung sebagai satu rantai sebab-akibat dengan satu belokan; penutup berhenti di punchline tanpa ajakan komentar atau pertanyaan ke penonton; kira-kira separuh adegan visual pov dengan mood yang berganti dan props yang memperagakan kalimat; "say" maks 5 kata dan tidak mengulang narasi; tiap "cue" adalah kata yang ada persis di text adegannya; angka pakai digit format Indonesia; stamp maks 18 huruf; kalimat terakhir menyambung ke kalimat pertama (loop); "hook_text" maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi (perbaiki kalau terdengar mengejek); prosedur dan angka profesi sesuai sumber resmi; visual sesuai daftar berikut.
 
 {LIBRARY}
 
@@ -95,8 +97,8 @@ IMAGE_STYLE = ("Stylized 3D CGI render, not a photograph, vertical 9:16 composit
                "simple uncluttered background, high-end science explainer animation style. No text, no letters, no "
                "numbers, no logos, no watermark, no blood.")
 
-_RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik bendamu yang SAMA PERSIS dipakai di setiap prompt gambar yang menampilkannya, supaya bentuknya konsisten (contoh: "a tall red drink vending machine with a glass front, spiral coils of colourful bottles inside and a small keypad on the right"). Benda tampil realistis, TANPA wajah atau mata. Sudut pandang "kamu" cukup lewat narasi.
-6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau bendamu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis, tampak potongan/cutaway yang memperlihatkan isi benda, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong)."""
+_RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik TOKOH "kamu" (orang Indonesia yang menjalani profesi itu) yang SAMA PERSIS dipakai di setiap prompt gambar yang menampilkannya, supaya wajah, rambut, dan seragamnya konsisten (contoh: "a young Indonesian male pilot with short black hair and a thin moustache, white shirt with four gold stripes on the epaulettes, black tie, aviator headset"). Tokoh digambar sebagai karakter 3D bergaya dengan wajah ekspresif yang menunjukkan emosi adegan.
+6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau tokohmu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis wajah tokoh, tampak potongan/cutaway yang memperlihatkan isi alat atau mesin, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong)."""
 
 WRITER_3D = WRITER_SYS.replace(WRITER_SYS[WRITER_SYS.index("5. \"hero\" menggambarkan"):WRITER_SYS.index("Balas HANYA JSON:")],
                                _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items())) + "\n\n")
@@ -109,10 +111,12 @@ WRITER_3D = WRITER_3D.replace(""" "hero":{{"name":"...","body":"box|emoji","emoj
 
 CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + (
     "setiap adegan punya \"image\" (prompt bahasa Inggris yang memperagakan kalimatnya secara harfiah, memuat hero_look "
-    "kalau bendanya tampil, tanpa teks di gambar, tanpa darah), \"camera\" salah satu dari " + ", ".join(CAMERAS) +
+    "kalau tokohnya tampil, tanpa teks di gambar, tanpa darah), \"camera\" salah satu dari " + ", ".join(CAMERAS) +
     ", \"label\" maks 12 huruf dan angkanya sama dengan narasi; tiap \"cue\" adalah kata yang ada persis di text "
-    "adegannya; angka pakai digit format Indonesia.\n\n3. Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
-    "santai dan lucu. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
+    "adegannya; angka pakai digit format Indonesia; kalimat terakhir menyambung ke kalimat pertama (loop); \"hook_text\" "
+    "maks 4 kata + 1 emoji dan sesuai krisis di kalimat pertama; nada menghormati profesi; prosedur dan angka profesi "
+    "sesuai sumber resmi.\n\n3. Jangan mengubah topik atau \"hero_look\". Pertahankan gaya "
+    "santai dan menegangkan. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
     "{\"issues\":[\"daftar yang kamu perbaiki, kosong kalau tidak ada\"],\"script\":{...naskah lengkap yang sudah "
     "diperbaiki, format sama...}}")
 
@@ -135,6 +139,7 @@ def tidy3d(s):
         x.pop("visual", None)
     s["scenes"] = scenes
     s["style"] = "3d"
+    s["hook_text"] = str(s.get("hook_text") or "").strip()[:34]
     s["title"] = str(s.get("title") or "")[:60]
     s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
     n = sum(len(x["text"].split()) for x in scenes)
@@ -179,7 +184,7 @@ def pictures(s, d, pub):
 
 def suggestions():
     out = []
-    for q in ("gimana jadinya kalau kamu jadi", "pov jadi", "kalau kamu jadi", "fakta unik mesin"):
+    for q in ("kalau kamu jadi", "pov jadi", "sehari jadi", "pov kamu jadi pilot"):
         try:
             u = "https://suggestqueries.google.com/complete/search?" + urllib.parse.urlencode(
                 {"client": "firefox", "ds": "yt", "hl": "id", "gl": "ID", "q": q})
@@ -246,6 +251,7 @@ def tidy(s):
     if s.get("theme") not in THEMES:
         s["theme"] = "kota"
     s["scenes"] = scenes
+    s["hook_text"] = str(s.get("hook_text") or "").strip()[:34]
     s["title"] = str(s.get("title") or "")[:60]
     s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
     n = sum(len(x["text"].split()) for x in scenes)
@@ -304,7 +310,7 @@ def voice(s, d, pub):
                        "words": [{"w": w["w"], "s": round((w["s"] - lead) * FPS), "e": round((w["e"] - lead) * FPS)}
                                  for w in words]})
         t += length
-    props = {"title": s["title"], "hero": s.get("hero"), "theme": s.get("theme"), "style": s.get("style"), "fps": FPS, "frames": round(t * FPS) + 6, "scenes": scenes}
+    props = {"title": s["title"], "hook": s.get("hook_text") or "", "hero": s.get("hero"), "theme": s.get("theme"), "style": s.get("style"), "fps": FPS, "frames": round(t * FPS) + 6, "scenes": scenes}
     save(d / "props.json", props)
     log(f"voice: {t:.1f} s")
     return props

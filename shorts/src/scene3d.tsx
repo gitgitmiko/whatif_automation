@@ -76,10 +76,44 @@ export const SoftCaptions: React.FC<{words: Word[]}> = ({words}) => {
   );
 };
 
-export const TopTag: React.FC<{title: string}> = ({title}) => (
-  <div style={{position: 'absolute', top: 120, width: '100%', textAlign: 'center'}}>
-    <span style={{fontFamily: SANS, fontWeight: 800, fontSize: 40, color: 'white', background: 'rgba(0,0,0,.45)',
-      padding: '12px 30px', borderRadius: 40, letterSpacing: 0.5}}>
+export const TopTag: React.FC<{title: string; from?: number}> = ({title, from = 0}) => {
+  const frame = useCurrentFrame();
+  const show = interpolate(frame, [from, from + 8], [0, 1], clamp);
+  if (show <= 0) return null;
+  return (
+  <div style={{position: 'absolute', top: 150, width: '100%', textAlign: 'center', opacity: show}}>
+    <span style={{fontFamily: SANS, fontWeight: 800, fontSize: 48, color: 'white', background: 'rgba(0,0,0,.55)',
+      padding: '14px 34px', borderRadius: 44, letterSpacing: 0.5}}>
       <span style={{color: '#FFD400'}}>GIMANA JADINYA?</span> {title.replace(/^kalau\s+/i, '').replace(/\?$/, '')}</span>
   </div>
-);
+  );
+};
+
+// The first ~1.8 s: the crisis in four giant words, slamming in one by one over a darkened picture. The first frame
+// already carries the first word, because that frame is what decides the swipe.
+export const HOOK_FRAMES = 54;
+export const HookCard: React.FC<{text: string}> = ({text}) => {
+  const frame = useCurrentFrame();
+  if (!text || frame >= HOOK_FRAMES) return null;
+  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+  const out = interpolate(frame, [HOOK_FRAMES - 8, HOOK_FRAMES], [1, 0], clamp);
+  const shake = frame > words.length * 4 + 6 && frame < words.length * 4 + 14 ? Math.sin(frame * 2.7) * 9 : 0;
+  return (
+    <AbsoluteFill style={{opacity: out}}>
+      <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 70%)'}} />
+      <div style={{position: 'absolute', top: 330, left: 60, right: 60, textAlign: 'center', transformOrigin: '50% 40%',
+        transform: `translateX(${shake}px) scale(${interpolate(frame, [0, 7], [1.3, 1], {...clamp, easing: Easing.out(Easing.back(2.2))})})`}}>
+        {words.map((w, i) => {
+          // Whole line readable on frame 0, slammed in from big; each word then gets its own little kick.
+          const kick = spring({frame: frame - 8 - i * 4, fps: 30, config: {damping: 9, stiffness: 260}});
+          const bump = frame >= 8 + i * 4 ? 1 + (1 - kick) * 0.18 : 1;
+          return (
+            <span key={i} style={{display: 'inline-block', margin: '0 18px', fontFamily: 'Anton', fontSize: 168, lineHeight: 1.08,
+              color: i % 2 ? 'white' : '#FFD400', transform: `scale(${bump})`,
+              WebkitTextStroke: '14px #000', paintOrder: 'stroke fill', textShadow: '0 12px 0 rgba(0,0,0,.5)'}}>{w}</span>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+};

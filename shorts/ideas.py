@@ -3,7 +3,7 @@
   riset  yt-dlp reads the latest Shorts of proven explainer channels and marks the outliers (views far above the
          channel's own median), plus this month's most-viewed Shorts for a few POV / fact searches; the opening lines
          of the biggest ones are fetched to see how they hook
-  ide    Claude (with web search) turns what makes those winners work into three "kalau kamu jadi <sesuatu>" ideas,
+  ide    Claude (with web search) turns what makes those winners work into three "kalau kamu jadi <profesi>" ideas,
          one per slot (pagi, sore, malam), each with its angle, a draft hook and the videos it learned from
 
 produce.py then writes each slot's Short from its idea (server.py passes --idea).
@@ -23,8 +23,8 @@ YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
 SLOTS = ["pagi", "sore", "malam"]
 # Explainer channels whose Shorts reliably pull millions (median views measured 2026-11-15).
 CHANNELS = ["zackdfilms", "MarkRober", "kurzgesagt", "TheActionLab", "SciShow", "AsapSCIENCE", "TEDEd", "kokbisa"]
-SEARCHES = ["pov kamu jadi", "kalau kamu jadi", "pov jadi benda", "fakta unik", "what if you were", "pov you are a",
-            "how does it work", "life of a"]
+SEARCHES = ["pov kamu jadi", "kalau kamu jadi", "pov jadi pilot", "sehari jadi", "a day in the life of",
+            "pov you are a pilot", "pov you are a firefighter", "what it is like to be a"]
 # YouTube search filter: sort by views; uploaded this month, videos only, under 4 minutes.
 THIS_MONTH = base64.b64encode(bytes([0x08, 0x03, 0x12, 0x06, 0x08, 0x04, 0x10, 0x01, 0x18, 0x01])).decode()
 
@@ -96,21 +96,26 @@ def recent_topics(days=45):
     return [t for t in out if t]
 
 
-SYS = """Kamu kepala riset konten channel YouTube Shorts "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video membuat penonton membayangkan "gimana jadinya kalau KAMU jadi <sesuatu>" (mesin, benda sehari-hari, hewan kecil, bagian tubuh, makanan, kendaraan, bangunan) lalu menjalani hidupnya, dengan fakta nyata, animasi 30-40 detik, penonton Indonesia.
+SYS = """Kamu kepala riset konten channel YouTube Shorts "Gimana Jadinya?". Formatnya POINT OF VIEW PROFESI: setiap video membuat penonton membayangkan "gimana jadinya kalau KAMU jadi <profesi>" lalu menjalani SATU momen paling menegangkan dari pekerjaan itu, dengan fakta nyata, animasi 3D 30-40 detik, penonton Indonesia.
 
 Kamu menerima data Shorts yang sedang meledak: "outlier_channel" (video terbaru dari channel penjelas besar yang views-nya jauh di atas median channel itu; x_median = berapa kali lipat), "pencarian_bulan_ini" (Shorts paling banyak ditonton bulan ini untuk kata kunci tertentu), dan "opening" (kata-kata pertama video, yaitu hook-nya).
 
 Tugas:
-1. Pelajari KENAPA video-video itu menang: benda/topik apa yang sedang dicari orang, rasa penasaran apa yang dipancing ("ternyata begini cara kerjanya", bahaya tersembunyi, rasa sakit, angka gila, rahasia di balik benda biasa), dan bagaimana hook-nya dibuka.
-2. Terjemahkan jadi 3 ide POV untuk hari ini, satu per slot (pagi, sore, malam). Setiap ide harus jelas terinspirasi dari pola video yang menang di data (sebut videonya), tapi ceritanya ORIGINAL, bukan menjiplak. Tiga ide harus beda kategori (misalnya satu mesin, satu hewan/tubuh, satu benda/makanan). Pilih benda yang akrab bagi orang Indonesia. Boleh pakai pencarian web untuk memastikan ada 4+ fakta nyata dan mengejutkan tentang bendanya.
-3. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu, hal jorok, dan sadis.
+1. Pelajari KENAPA video-video itu menang: momen apa yang memancing rasa penasaran (bahaya, keputusan sepersekian detik, angka gila, rahasia di balik pekerjaan, "ternyata begini caranya"), dan bagaimana hook-nya dibuka.
+2. Terjemahkan jadi 3 ide POV PROFESI untuk hari ini, satu per slot (pagi, sore, malam). Tiga ide harus beda kelompok:
+   - satu profesi sehari-hari yang akrab di Indonesia (driver ojol, kasir minimarket, tukang parkir, satpam, petugas tol, montir bengkel, penjual bakso, kurir paket, petugas SPBU, dll.),
+   - satu profesi berbahaya atau berisiko tinggi (pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN di tiang, ABK kapal, penambang, petugas jalan tol malam, dll.),
+   - satu profesi di balik layar yang jarang dilihat orang (petugas menara ATC, dokter IGD, operator bendungan, penjaga mercusuar, teknisi lift, petugas forensik, penerjemah bahasa isyarat, dll.).
+   Setiap ide berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Boleh pakai pencarian web untuk memastikan faktanya.
+3. Hormati profesinya: nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
+4. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
 
 Balas HANYA JSON:
 {"insight":"3-5 kalimat: pola yang sedang menang hari ini",
- "ideas":[{"slot":"pagi|sore|malam","topic":"nama benda singkat, misalnya mesin ATM",
-   "angle":"1-2 kalimat: sudut cerita dan rasa penasaran yang dijual",
-   "hook":"draf kalimat pertama dengan sudut pandang 'kamu' (bukan 'aku'): di tengah aksi, ada konflik/bahaya/keanehan, maks 14 kata, tanpa 'gimana jadinya'",
-   "facts":["3-5 fakta kunci dengan angka, yang sudah kamu cek"],
+ "ideas":[{"slot":"pagi|sore|malam","topic":"nama profesi singkat, misalnya pilot pesawat",
+   "angle":"1-2 kalimat: momen krisis yang dialami dan rasa penasaran yang dijual",
+   "hook":"draf kalimat pertama dengan sudut pandang 'kamu': langsung di tengah krisis, ada taruhan nyata (nyawa, uang, waktu, malu), maks 14 kata, tanpa 'gimana jadinya'",
+   "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek"],
    "inspired_by":[{"title":"...","views":123,"why":"apa yang ditiru: pola, bukan isi"}]}]}"""
 
 
