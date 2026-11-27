@@ -28,7 +28,7 @@ def test_catalog_matches_ts():
             fx_src = (HERE / "src" / "kit3d" / "effects.tsx").read_text()
             assert set(w["efek"]) == set(re.findall(r"^\s{2}(\w+): \(\{frame", fx_src, re.M)), w["efek"]
     props_src = (HERE / "src" / "kit3d" / "props.tsx").read_text()
-    assert "profesi" in cat and cat["profesi"]["aktif"] is False
+    assert "profesi" in cat and all(isinstance(w.get("aktif"), bool) for w in cat.values())
     for w in cat.values():
         for p in w["props"]:
             assert re.search(rf"^\s{{2}}{p}:", props_src, re.M), p
@@ -212,24 +212,26 @@ def test_scene_can_cut_to_tubuh():
                     {"text": "Jantung berdebar.", "world": "tubuh", "shot": "terbang"},
                     {"text": "Kembali ke warung.", "world": "bulan", "shot": "wajah"}]}
     import copy
+    produce.WORLDS["tubuh"]["aktif"] = False
     off = produce.tidy_remotion(copy.deepcopy(s))  # tubuh not yet approved: the cut becomes a normal scene
     assert all("world" not in x for x in off["scenes"]), [x.get("world") for x in off["scenes"]]
     produce.WORLDS["tubuh"]["aktif"] = True
     try:
         t = produce.tidy_remotion(s)
     finally:
-        produce.WORLDS["tubuh"]["aktif"] = False
+        produce.WORLDS["tubuh"]["aktif"] = True
     sc = t["scenes"]
     assert sc[1]["world"] == "tubuh" and sc[1]["shot"] == "paru" and sc[1].get("props") == [] and "latar" not in sc[1]
     assert sc[2]["world"] == "tubuh" and sc[2]["shot"] in produce.WORLDS["tubuh"]["shots"]
     assert "world" not in sc[3] and sc[3]["shot"] == "wajah" and sc[3]["latar"] == "dapur"
+    produce.WORLDS["tubuh"]["aktif"] = False
     assert '"world":"tubuh"' not in produce.prompts_remotion("profesi", "loop", "fakta")[0]  # inactive: not offered
     produce.WORLDS["tubuh"]["aktif"] = True
     try:
         w, _ = produce.prompts_remotion("profesi", "loop", "fakta")
         assert "   - jantung: jantung berdetak" in w and '"world":"tubuh"' in w
     finally:
-        produce.WORLDS["tubuh"]["aktif"] = False
+        produce.WORLDS["tubuh"]["aktif"] = True
 
 
 def test_tidy_remotion_odd_types():
@@ -253,6 +255,17 @@ def test_catalog_without_props_still_imports():
     (tmp / "shorts" / "worlds.json").write_text(json.dumps(cat))
     r = subprocess.run([sys.executable, "-c", "import produce; print(sorted(produce.INSETS))"], cwd=tmp / "shorts", capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-500:]
+
+
+def test_inset_only_world_is_never_a_video_world():
+    import ideas
+    sys.path.insert(0, str(HERE.parent / "pipeline"))
+    import server
+    ideas.ACTIVE = True
+    assert ideas.world_of({"world": "tubuh"}) is None and "- tubuh:" not in ideas.research_sys()
+    server.STYLE_REMOTION_FROM, server.STYLE_3D_FROM, server.WORLDS_FILE = "2000-01-01", "2000-01-01", HERE / "worlds.json"
+    assert server.attempts({"world": "tubuh"}, "2026-12-01", None)[0] == ["--style", "3d"]
+    assert server.attempts({"world": "profesi"}, "2026-12-01", None)[0] == ["--style", "remotion3d", "--world", "profesi"]
 
 
 def _clip(src, out):

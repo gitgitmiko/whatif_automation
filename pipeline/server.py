@@ -99,7 +99,7 @@ def attempts(idea, today, research_script):
             worlds = load(WORLDS_FILE)
         except Exception as e:  # a broken catalog costs the 3D world, never the slot
             log("worlds.json unreadable, no 3D world:", e)
-    if world in worlds and worlds[world].get("aktif"):  # a world awaiting the user's verdict stays off
+    if world in worlds and worlds[world].get("aktif") and not worlds[world].get("sisipan"):  # a world awaiting the user's verdict stays off
         out.append(["--style", "remotion3d", "--world", world] + (["--script", research_script] if styled == "remotion3d" else []))
     if today >= STYLE_3D_FROM:
         out.append(["--style", "3d"] + (["--script", research_script] if research_script and styled != "remotion3d" else []))

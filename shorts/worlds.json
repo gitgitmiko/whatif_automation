@@ -122,7 +122,7 @@
     ]
   },
   "profesi": {
-    "aktif": false,
+    "aktif": true,
     "cocok": "hampir semua profesi POV yang latarnya tersedia: pedagang makanan/chef (dapur), montir (bengkel), ojol/kurir/tukang parkir/petugas lalu lintas (jalan), dokter/perawat IGD (rumah_sakit), operator CCTV/ATC/bendungan/listrik (kantor), teknisi data center (server), teknisi tower/PLN (ketinggian), pekerja anjungan/ABK (laut), pilot (kokpit)",
     "latar": {
       "dapur": {
@@ -293,7 +293,7 @@
     ]
   },
   "tubuh": {
-    "aktif": false,
+    "aktif": true,
     "cocok": "adegan penjelasan tentang tubuh manusia: apa yang terjadi pada jantung, paru-paru, lambung, ginjal, otak, atau aliran darah (misalnya dokter IGD, perawat, atlet, penyelam, pilot saat tekanan tinggi); biasanya dipakai sebagian adegan saja, dunia lain tetap untuk adegan cerita",
     "shots": {
       "siluet": {
@@ -356,6 +356,7 @@
       "helm",
       "pet",
       "perawat"
-    ]
+    ],
+    "sisipan": true
   }
 }
