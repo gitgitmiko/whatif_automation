@@ -186,6 +186,24 @@ def test_inactive_world_is_flow():
         server.WORLDS_FILE = HERE / "worlds.json"
 
 
+def test_tidy_remotion_latar():
+    import produce
+    s = {"world": "profesi", "title": "Kalau Kamu Jadi Penjual Gorengan?", "hero": {"seragam": "#e2711d", "topi": "none"},
+         "scenes": [{"text": "Minyakmu mulai berasap.", "shot": "lebar", "props": [{"jenis": "motor", "di": "jalan"}]},
+                    {"text": "Api menyambar.", "shot": "bahaya", "latar": "kapal", "efek": "ledakan"},
+                    {"text": "Kamu lari ke bengkel.", "shot": "wajah", "latar": "bengkel", "props": [{"jenis": "ban", "di": "jalan"}, {"jenis": "ban", "di": "rak"}]},
+                    {"text": "Tabung gas tiga kilogram.", "shot": "penjelasan", "efek": "api", "props": [{"jenis": "tabung_gas", "di": "mana_saja"}]}]}
+    t = produce.tidy_remotion(s)
+    sc = t["scenes"]
+    assert [x["latar"] for x in sc] == ["dapur", "dapur", "bengkel", "bengkel"], [x.get("latar") for x in sc]
+    assert sc[0]["props"] == [{"jenis": "motor", "di": "jalan"}]
+    assert "efek" not in sc[1] and sc[3]["efek"] == "api"
+    assert sc[2]["props"] == [{"jenis": "ban", "di": "rak"}]
+    assert sc[3]["props"] == [{"jenis": "tabung_gas", "di": "panggung"}]
+    w, c = produce.prompts_remotion("profesi", "loop", "fakta")
+    assert '"latar"' in w and "   - dapur: warung gorengan" in w and "efek" in w and "   - bengkel:" in c
+
+
 def _clip(src, out):
     import subprocess
     subprocess.run(["ffmpeg", "-v", "error", "-y", *src, "-t", "1", "-r", "30", "-pix_fmt", "yuv420p", str(out)], check=True)

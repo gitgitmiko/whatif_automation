@@ -162,9 +162,12 @@ def world_menu(world):
     w = WORLDS[world]
     shots = "\n".join(f'   - {k}: {v["arti"]}' + (f' (anchor: {", ".join(v["anchors"])})' if v["anchors"] else "")
                       + (" [TOKOH TAMPIL]" if v["tokoh"] else "") for k, v in w["shots"].items())
-    return (f'DUNIA 3D "{world}" (cocok untuk: {w["cocok"]}). Shot yang tersedia:\n{shots}\n'
+    latar = "".join(f'\n   - {k}: {v["arti"]} (anchor: {", ".join(v["anchors"])})' for k, v in w.get("latar", {}).items())
+    return (f'DUNIA 3D "{world}" (cocok untuk: {w["cocok"]}).' + (f' Latar yang tersedia (kolom "latar" tiap adegan):{latar}\n' if latar else "")
+            + f' Shot yang tersedia:\n{shots}\n'
             f'   {w.get("catatan", "")}\n   Benda: {", ".join(w["props"])}. Pose tokoh: {", ".join(w["poses"])}. '
-            f'Ekspresi: {", ".join(w["exprs"])}. Topi: {", ".join(w["topi"])}.')
+            f'Ekspresi: {", ".join(w["exprs"])}. Topi: {", ".join(w["topi"])}.'
+            + (f' Efek: {", ".join(w["efek"])}.' if w.get("efek") else ""))
 
 
 def prompts_remotion(world, ending, mode="fakta"):
@@ -181,10 +184,15 @@ def prompts_remotion(world, ending, mode="fakta"):
              + ", ".join(f"{k} ({v})" for k, v in SFX.items()) + '; boleh kosong), "emosi" (nada suara narator: ' + ", ".join(EMOSI)
              + '; buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir).\n'
              + world_menu(world))
+    if WORLDS[world].get("latar"):
+        rules += ('\n   Dunia ini punya beberapa LATAR: tiap adegan WAJIB punya "latar" (nama dari daftar latar, pilih yang sesuai '
+                  'tempat kejadian kalimatnya; boleh berganti antar adegan) dan boleh punya "efek" (salah satu efek di daftar, menyala '
+                  'di benda kerja; shot "bahaya" tanpa efek memakai efek bawaan latar).')
+    extra = '"latar":"...","efek":"",' if WORLDS[world].get("latar") else ""
     writer = writer.replace(_RULES_3D_TEXT, rules).replace(_JSON_3D, """ "seri":"NIGHT SHIFT",
  "world":"%s",
  "hero":{"seragam":"#2b4c8c","topi":"none"},
- "scenes":[{"text":"...","shot":"...","hero_pose":"","hero_expr":"","props":[],"label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""" % world)
+ "scenes":[{"text":"...",%s"shot":"...","hero_pose":"","hero_expr":"","props":[],"label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""" % (world, extra))
     a = checker.index('setiap adegan punya "image"')
     b = checker.index('"label" maks 12 huruf')
     checker = (checker[:a] + 'setiap adegan punya "shot" dari daftar dunia di bawah (tidak sama dengan adegan sebelumnya, minimal 5 shot berbeda), '
@@ -207,17 +215,25 @@ def tidy_remotion(s):
     if len(scenes) < 4:
         raise ValueError(f"script has only {len(scenes)} scenes")
     names = list(w["shots"])
-    prev = None
+    prev, place = None, None
     for i, x in enumerate(scenes):
+        if w.get("latar"):  # a world of sets: a missing or unknown latar continues the previous one
+            place = x["latar"] = x.get("latar") if x.get("latar") in w["latar"] else place or next(iter(w["latar"]))
+            if x.get("efek") not in w.get("efek", []):
+                x.pop("efek", None)
         if x.get("shot") not in w["shots"] or x["shot"] == prev:
             x["shot"] = next(n for n in names[i % len(names):] + names if n != prev)
         prev = x["shot"]
         for k, allowed in (("hero_pose", w["poses"]), ("hero_expr", w["exprs"])):
             if x.get(k) not in allowed:
                 x.pop(k, None)
-        anchors = w["shots"][x["shot"]]["anchors"]
-        props = [p for p in x.get("props") or [] if isinstance(p, dict) and p.get("jenis") in w["props"] and p.get("di") in anchors]
-        x["props"] = [{"jenis": p["jenis"], "di": p["di"]} for p in props][:3]
+        anchors = w["latar"][place]["anchors"] if place else w["shots"][x["shot"]]["anchors"]
+        if x["shot"] == "penjelasan" and place:  # the explainer stage shows the first real prop, wherever the script put it
+            shown = [p for p in x.get("props") or [] if isinstance(p, dict) and p.get("jenis") in w["props"]][:1]
+            x["props"] = [{"jenis": p["jenis"], "di": "panggung"} for p in shown]
+        else:
+            props = [p for p in x.get("props") or [] if isinstance(p, dict) and p.get("jenis") in w["props"] and p.get("di") in anchors]
+            x["props"] = [{"jenis": p["jenis"], "di": p["di"]} for p in props][:3]
         if not x.get("label") or len(str(x["label"])) > 14:
             x.pop("label", None)
         spoken = [t.lower().strip(".,?!;:") for t in x["text"].split()]
