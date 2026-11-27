@@ -2,7 +2,7 @@ import {Composition, Still} from 'remotion';
 import {Short, ShortProps} from './Short';
 import {Banner, Profile, Watermark} from './Brand';
 import sample from './sample.json';
-import {PersonSheet, PropSheet} from './kit3d/sheets';
+import {EffectSheet, PersonSheet, PropSheet} from './kit3d/sheets';
 
 export const Root: React.FC = () => (
   <>
@@ -20,6 +20,7 @@ export const Root: React.FC = () => (
     <Still id="Banner" component={Banner} width={2560} height={1440} />
     <Still id="PersonSheet" component={PersonSheet} width={1080} height={1920} />
     <Still id="PropSheet" component={PropSheet} width={1080} height={1920} />
+    <Still id="EffectSheet" component={EffectSheet} width={1080} height={1920} />
     <Still id="Watermark" component={Watermark} width={150} height={150} />
   </>
 );

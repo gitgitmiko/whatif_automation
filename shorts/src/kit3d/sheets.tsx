@@ -3,6 +3,7 @@ import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {Lights, Rig} from './core';
 import {EXPRS, HATS, POSES, Person} from './person';
 import {PROPS} from './props';
+import {EFFECTS} from './effects';
 
 // Preview stills for checking the kit by eye: every pose, every expression, every hat.
 const Stage: React.FC<{children: React.ReactNode; cam: [number, number, number]; at: [number, number, number]; fov: number; ground?: number}> = ({children, cam, at, fov, ground = 0}) => {
@@ -46,6 +47,19 @@ export const PropSheet: React.FC = () => {
         return <group key={n} position={[(i % 3) * 6 - 6, 0, Math.floor(i / 3) * 5.5 - 12]} rotation={[0, -0.5, 0]}><Prop frame={frame} /></group>;
       })}
       {[-9, 9].map((x) => <Person key={x} frame={frame} position={[x, 0, 10]} />)}
+    </Stage>
+  );
+};
+
+// The effects in a row (front) and the newest props (back), for checking by eye.
+export const EffectSheet: React.FC = () => {
+  const frame = useCurrentFrame();
+  const fx = Object.keys(EFFECTS);
+  const props = ['kompor', 'ban', 'jerigen', 'ember', 'apar', 'botol_oli'];
+  return (
+    <Stage cam={[0, 2.6, 9]} at={[0, 0.9, 0]} fov={40}>
+      {fx.map((n, i) => { const F = EFFECTS[n]; return <F key={n} frame={frame} at={[(i % 3) * 1.6 - 1.6, 0.6 + Math.floor(i / 3) * 1.6, 0]} />; })}
+      {props.map((n, i) => { const P = PROPS[n]; return <group key={n} position={[i * 0.75 - 1.9, 0, 2.2]}><P frame={frame} /></group>; })}
     </Stage>
   );
 };
