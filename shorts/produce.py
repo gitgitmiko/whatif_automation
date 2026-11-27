@@ -13,7 +13,7 @@
       --mode fakta|horor overrides the slot's mode (slot5 = horor); --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
       3D render moved by the camera (src/scene3d.tsx) instead of the cartoon hero
 """
-import asyncio, json, re, shutil, sqlite3, subprocess, sys, urllib.parse, urllib.request
+import asyncio, json, re, shutil, sqlite3, subprocess, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 import edge_tts
 
@@ -123,17 +123,19 @@ IMAGE_STYLE = ("Stylized 3D CGI render, not a photograph, vertical 9:16 composit
 _RULES_3D = """5. "hero_look" (bahasa Inggris): deskripsi fisik TOKOH "kamu" (orang Indonesia yang menjalani profesi itu) yang SAMA PERSIS dipakai di setiap prompt gambar yang menampilkannya, supaya wajah, rambut, dan seragamnya konsisten (contoh: "a young Indonesian male pilot with short black hair and a thin moustache, white shirt with four gold stripes on the epaulettes, black tie, aviator headset"). Tokoh digambar sebagai karakter 3D bergaya dengan wajah ekspresif yang menunjukkan emosi adegan.
 6. Tiap adegan: "text" (narasi), "image" (prompt bahasa Inggris untuk SATU gambar render 3D yang MEMPERAGAKAN kalimat itu secara harfiah, 25-60 kata: subjek, aksi, sudut kamera, latar. Kalau tokohmu tampil, tulis hero_look apa adanya di dalamnya. Pakai variasi khas video penjelas: close-up dramatis wajah tokoh, tampak potongan/cutaway yang memperlihatkan isi alat atau mesin, x-ray, makro sampai skala molekul, sudut rendah. Latar polos warna solid (biru, teal, oranye) untuk adegan penjelasan, lokasi sederhana khas Indonesia untuk adegan cerita. Orang digambar sebagai karakter 3D bergaya, wajah ekspresif. Jangan menulis teks atau angka di gambar), "camera" (gerak kamera: push = maju pelan, pull = mundur, pan_left/pan_right = geser, rise/fall = naik/turun; variasikan), "label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C", "3×"; pakai di 2-4 adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu, saat label muncul atau aksi terjadi), "sfx" (satu dari: {sfx}; boleh kosong), "emosi" (nada suara narator di kalimat itu: {emosi}; ikuti perasaan orang yang mengalaminya dan buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir)."""
 
+_RULES_3D_TEXT = _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items()), emosi=", ".join(EMOSI))
 WRITER_3D = WRITER_SYS.replace(WRITER_SYS[WRITER_SYS.index("5. \"hero\" menggambarkan"):WRITER_SYS.index("Balas HANYA JSON:")],
-                               _RULES_3D.format(sfx=", ".join(f"{k} ({v})" for k, v in SFX.items()), emosi=", ".join(EMOSI))
+                               _RULES_3D_TEXT
                                + "\n7. \"seri\": pilih SATU seri yang paling cocok: "
                                + "; ".join(f"{k} = {v}" for k, v in SERIES.items()) + ".\n\n")
 WRITER_3D = WRITER_3D.replace("dalam animasi grafis 35-50 detik", "dalam animasi render 3D 30-40 detik")
+_JSON_3D = """ "seri":"NIGHT SHIFT",
+ "hero_look":"...",
+ "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"...","emosi":"tegang"}]}"""
 WRITER_3D = WRITER_3D.replace(""" "hero":{{"name":"...","body":"box|emoji","emoji":"...","color":"#......","face":true}},
  "theme":"...",
  "scenes":[{{"text":"...","visual":{{...}},"cue":"...","sfx":"...","emosi":"tegang"}}]}}""".replace("{{", "{").replace("}}", "}"),
- """ "seri":"NIGHT SHIFT",
- "hero_look":"...",
- "scenes":[{"text":"...","image":"...","camera":"push","label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""")
+ _JSON_3D)
 
 CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + (
     "setiap adegan punya \"image\" (prompt bahasa Inggris yang memperagakan kalimatnya secara harfiah, memuat hero_look "
@@ -145,6 +147,121 @@ CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + 
     "santai dan menegangkan. Perbarui \"sources\" dengan URL yang kamu pakai untuk memeriksa.\nBalas HANYA JSON: "
     "{\"issues\":[\"daftar yang kamu perbaiki, kosong kalau tidak ada\"],\"script\":{...naskah lengkap yang sudah "
     "diperbaiki, format sama...}}")
+
+
+# Real-time 3D worlds (shorts/src/worlds) and what the writer may use in each: shots, anchors, props, poses, hats.
+WORLDS = load(HERE / "worlds.json")
+
+
+def world_menu(world):
+    """The chosen world as the writer and checker read it: every shot with its meaning, anchors and hero flag."""
+    w = WORLDS[world]
+    shots = "\n".join(f'   - {k}: {v["arti"]}' + (f' (anchor: {", ".join(v["anchors"])})' if v["anchors"] else "")
+                      + (" [TOKOH TAMPIL]" if v["tokoh"] else "") for k, v in w["shots"].items())
+    return (f'DUNIA 3D "{world}" (cocok untuk: {w["cocok"]}). Shot yang tersedia:\n{shots}\n'
+            f'   {w.get("catatan", "")}\n   Benda: {", ".join(w["props"])}. Pose tokoh: {", ".join(w["poses"])}. '
+            f'Ekspresi: {", ".join(w["exprs"])}. Topi: {", ".join(w["topi"])}.')
+
+
+def prompts_remotion(world, ending, mode="fakta"):
+    """Writer and checker for a script told as shots of a real-time 3D world instead of picture prompts."""
+    writer, checker = prompts(True, ending, mode)
+    rules = (f'5. Video ini animasi 3D real-time di dunia yang sudah jadi. "world" WAJIB "{world}". "hero" adalah tokoh "kamu": '
+             '{"seragam":"#hex warna seragam profesi itu","topi":"salah satu topi di daftar"}; tokoh hanya tampil di shot bertanda TOKOH TAMPIL.\n'
+             '6. Tiap adegan: "text" (narasi), "shot" (SATU nama shot dari daftar di bawah yang paling memperagakan kalimatnya; jangan pakai shot '
+             'yang sama dua kali berturut-turut; minimal 5 shot berbeda dalam satu video), "hero_pose" dan "hero_expr" (hanya di shot bertanda '
+             'TOKOH TAMPIL: pose dan ekspresi dari daftar, ekspresi mengikuti emosi kalimatnya), "props" (opsional, maks 3: '
+             '[{"jenis":"nama benda dari daftar","di":"nama anchor milik shot itu"}], hanya untuk benda yang memang ada di cerita), '
+             '"label" (opsional, maks 12 huruf: angka/kata kunci yang melayang di layar saat kata cue, contoh "300 KG", "121°C"; pakai di 2-4 '
+             'adegan yang punya angka), "cue" (SATU kata yang ada persis di text adegan itu), "sfx" (satu dari: '
+             + ", ".join(f"{k} ({v})" for k, v in SFX.items()) + '; boleh kosong), "emosi" (nada suara narator: ' + ", ".join(EMOSI)
+             + '; buat BERGANTI mengikuti alur, misalnya kaget di hook, serius saat menjelaskan, panik di belokan, lega atau tegang di akhir).\n'
+             + world_menu(world))
+    writer = writer.replace(_RULES_3D_TEXT, rules).replace(_JSON_3D, """ "seri":"NIGHT SHIFT",
+ "world":"%s",
+ "hero":{"seragam":"#2b4c8c","topi":"none"},
+ "scenes":[{"text":"...","shot":"...","hero_pose":"","hero_expr":"","props":[],"label":"","cue":"...","sfx":"...","emosi":"tegang"}]}""" % world)
+    a = checker.index('setiap adegan punya "image"')
+    b = checker.index('"label" maks 12 huruf')
+    checker = (checker[:a] + 'setiap adegan punya "shot" dari daftar dunia di bawah (tidak sama dengan adegan sebelumnya, minimal 5 shot berbeda), '
+               '"hero_pose"/"hero_expr" hanya dari daftar dan hanya di shot TOKOH TAMPIL, "props" hanya benda dan anchor shot itu (maks 3), '
+               + checker[b:]).replace('Jangan mengubah topik atau "hero_look"', 'Jangan mengubah topik, "world", atau "hero"')
+    checker = checker.replace("\nBalas HANYA JSON:", "\n\n" + world_menu(world) + "\nBalas HANYA JSON:", 1)
+    return writer, checker
+
+
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def tidy_remotion(s):
+    """A script for a 3D world, repaired to what the world really has: unknown shots, poses, props and hats are
+    replaced or dropped so the render never meets a name it does not know."""
+    w = WORLDS.get(s.get("world"))
+    if not w:
+        raise ValueError(f"unknown 3D world {s.get('world')!r}")
+    scenes = [x for x in s.get("scenes", []) if str(x.get("text", "")).strip()]
+    if len(scenes) < 4:
+        raise ValueError(f"script has only {len(scenes)} scenes")
+    names = list(w["shots"])
+    prev = None
+    for i, x in enumerate(scenes):
+        if x.get("shot") not in w["shots"] or x["shot"] == prev:
+            x["shot"] = next(n for n in names[i % len(names):] + names if n != prev)
+        prev = x["shot"]
+        for k, allowed in (("hero_pose", w["poses"]), ("hero_expr", w["exprs"])):
+            if x.get(k) not in allowed:
+                x.pop(k, None)
+        anchors = w["shots"][x["shot"]]["anchors"]
+        props = [p for p in x.get("props") or [] if isinstance(p, dict) and p.get("jenis") in w["props"] and p.get("di") in anchors]
+        x["props"] = [{"jenis": p["jenis"], "di": p["di"]} for p in props][:3]
+        if not x.get("label") or len(str(x["label"])) > 14:
+            x.pop("label", None)
+        spoken = [t.lower().strip(".,?!;:") for t in x["text"].split()]
+        cue = str(x.get("cue") or "").lower().strip(".,?!;:")
+        if cue and not any(t.startswith(cue) for t in spoken):
+            x.pop("cue", None)
+        if x.get("sfx") not in SFX:
+            x.pop("sfx", None)
+        if x.get("emosi") not in EMOSI:
+            x["emosi"] = "tegang"
+        for k in ("image", "camera", "visual"):
+            x.pop(k, None)
+    hero = s.get("hero") if isinstance(s.get("hero"), dict) else {}
+    s["hero"] = {"topi": hero.get("topi") if hero.get("topi") in w["topi"] else "none"}
+    if HEX.match(str(hero.get("seragam") or "")):
+        s["hero"] = {"seragam": hero["seragam"], **s["hero"]}
+    s["scenes"], s["style"] = scenes, "remotion3d"
+    if s.get("seri") not in SERIES:
+        s.pop("seri", None)
+    s["hook_text"] = str(s.get("hook_text") or "").strip()[:34]
+    s["title"] = str(s.get("title") or "")[:60]
+    s["yt_title"] = str(s.get("yt_title") or "Gimana Jadinya " + s["title"])[:90]
+    log(f"script: {len(scenes)} scenes, {sum(len(x['text'].split()) for x in scenes)} words, world {s['world']}, "
+        f"shots {' '.join(x['shot'] for x in scenes)}")
+    return s
+
+
+def frame_check(video, scenes, fps=FPS):
+    """One frame from the middle of each scene: a near-black or near-flat one means the camera saw nothing (ground,
+    a wall, a world that did not load). Returns the problems and leaves contact.jpg beside the video."""
+    import numpy as np
+    problems, tmp = [], Path(video).parent / "contact-tmp"
+    tmp.mkdir(exist_ok=True)
+    for i, x in enumerate(scenes):
+        t = (x["from"] + x["frames"] / 2) / fps
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1",
+                              "-vf", "scale=54:96,format=gray", "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+        g = np.frombuffer(raw, np.uint8).astype(float)
+        if g.size == 0 or g.mean() < 10:
+            problems.append(f"adegan {i}: gelap")
+        elif g.std() < 5:
+            problems.append(f"adegan {i}: datar")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1",
+                        "-vf", "scale=216:384", str(tmp / f"f{i:02}.jpg")], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-framerate", "1", "-i", str(tmp / "f%02d.jpg"), "-vf",
+                    f"tile={len(scenes)}x1", "-frames:v", "1", str(Path(video).parent / "contact.jpg")], check=True)
+    shutil.rmtree(tmp, ignore_errors=True)
+    return problems
 
 
 # Ending: semua slot "loop" menggantung (keputusan 2026-11-22; uji A/B dibatalkan). Varian "tuntas" tetap ada
@@ -395,7 +512,8 @@ def props_from(s, scenes, frames):
     return {"title": s["title"], "hook": s.get("hook_text") or "", "hero": s.get("hero"), "theme": s.get("theme"),
             "style": s.get("style"), "fps": FPS, "frames": frames, "scenes": scenes,
             "series": f"{s['seri']} · EP. {s['episode']}" if s.get("seri") and s.get("episode") else "",
-            "mode": s.get("mode") or "fakta"}
+            "mode": s.get("mode") or "fakta",
+            **({"world": s["world"], "hero3d": s.get("hero") or {}} if s.get("style") == "remotion3d" else {})}
 
 
 def voice_gemini(s, d, pub):
@@ -495,10 +613,11 @@ def voice(s, d, pub):
         return voice_edge(s, d, pub)
 
 
-def render(d, pub):
+def render(d, pub, gl=None):
+    """gl="swangle" for the real-time 3D worlds: the server has no GPU, so WebGL runs in software."""
     subprocess.run(["npx", "remotion", "render", "Short", str(d / "final.mp4"), f"--props={d / 'props.json'}",
-                    f"--public-dir={pub}", "--concurrency=6", "--crf=20", "--log=error"], cwd=HERE, check=True,
-                   timeout=1800)
+                    f"--public-dir={pub}", "--concurrency=6", "--crf=20", "--log=error"] + ([f"--gl={gl}"] if gl else []),
+                   cwd=HERE, check=True, timeout=1800)
 
 
 def brief_for(idea=None, topic=None):
@@ -516,24 +635,34 @@ def opus(system, user):
     return claude_json("opus", system, user, web=True)
 
 
-def write_draft(brief, three, ending, mode, ask=opus):
+def write_draft(brief, three, ending, mode, ask=opus, world=None):
     """One full draft script; ask(system, user) -> dict is the writer (Opus here, the Peran AI writer in the 19:00
-    research). Fails early when even the checker could not save it."""
-    writer, _ = prompts(three, ending, mode)
+    research). With a world, the script is told in that real-time 3D world's shots. Fails early when even the checker
+    could not save it."""
+    writer, _ = prompts_remotion(world, ending, mode) if world else prompts(three, ending, mode)
     draft = ask(writer, json.dumps(brief, ensure_ascii=False))
-    (tidy3d if three else tidy)(json.loads(json.dumps(draft)))
+    if world:
+        draft["world"] = world
+    fixer(three, world)(json.loads(json.dumps(draft)))
     return draft
 
 
-def check_draft(draft, three, ending, mode, ask=opus):
+def fixer(three, world):
+    return tidy_remotion if world else tidy3d if three else tidy
+
+
+def check_draft(draft, three, ending, mode, ask=opus, world=None):
     """The checker (Opus, or the Peran AI checker) fact-checks and fixes a draft; a "tuntas" ending that still dangles
     gets one more pass."""
-    _, checker = prompts(three, ending, mode)
-    fix = tidy3d if three else tidy
+    _, checker = prompts_remotion(world, ending, mode) if world else prompts(three, ending, mode)
+    fix = fixer(three, world)
     checked = ask(checker, json.dumps(draft, ensure_ascii=False))
     for issue in checked.get("issues", []):
         log("fixed:", issue)
-    s = fix(checked.get("script") or draft)
+    s = checked.get("script") or draft
+    if world:
+        s["world"] = world  # the checker may not move the story to another world
+    s = fix(s)
     if ending == "tuntas" and cliffhanger(s):  # one more pass with the ending as the only job
         log("ending is a cliffhanger, asking the checker to resolve it:", s["scenes"][-1]["text"])
         again = ask(checker, json.dumps(
@@ -545,26 +674,33 @@ def check_draft(draft, three, ending, mode, ask=opus):
     return s
 
 
-def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, mode=None):
+def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, mode=None, world=None):
     d = RUNS / rid
     slot = (idea or {}).get("slot") or next((x for x in rid.split("-") if x in ENDING_BY_SLOT), "")
     ending = ending if ending in ENDINGS else ENDING_BY_SLOT.get(slot, "tuntas")
     mode = mode if mode in ("fakta", "horor") else (idea or {}).get("mode") or MODE_BY_SLOT.get(slot, "fakta")
     d.mkdir(parents=True, exist_ok=True)
-    three = style == "3d"
+    real3d = style == "remotion3d"
+    world = (world or (idea or {}).get("world")) if real3d else None
+    if real3d and world not in WORLDS:
+        raise ValueError(f"--style remotion3d needs a known --world, got {world!r}")
+    three = style == "3d" or real3d
     if script_file:  # naskah jadi dari riset 19:00 (ditulis Sonnet, dijuri & dicek Opus)
         raw = load(script_file)
-        s = tidy3d(raw) if three or raw.get("style") == "3d" else tidy(raw)
+        if real3d:
+            s = tidy_remotion({**raw, "world": raw.get("world") or world})
+        else:
+            s = tidy3d(raw) if three or raw.get("style") == "3d" else tidy(raw)
     else:
         print("STAGE naskah", flush=True)
         brief = brief_for(idea, topic)
         if idea:
             log(f"idea: kamu jadi {idea['topic']} | {idea.get('hook', '')}")
-        log(f"ending: {ending}, mode: {mode}")
-        draft = write_draft(brief, three, ending, mode)
+        log(f"ending: {ending}, mode: {mode}" + (f", world: {world}" if world else ""))
+        draft = write_draft(brief, three, ending, mode, world=world)
         save(d / "script.draft.json", draft)
         print("STAGE cek", flush=True)
-        s = check_draft(draft, three, ending, mode)
+        s = check_draft(draft, three, ending, mode, world=world)
     s["ending"], s["mode"] = ending, mode
     if s.get("seri"):
         s["episode"] = episode(s["seri"])
@@ -584,8 +720,14 @@ def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, 
     shutil.copytree(HERE / "public" / "sfx", pub / "sfx", dirs_exist_ok=True)
     voice(s, d, pub)
     print("STAGE render", flush=True)
-    render(d, pub)
+    t0 = time.time()
+    render(d, pub, "swangle" if real3d else None)
     shutil.rmtree(pub / "sfx", ignore_errors=True)
+    if real3d:
+        log(f"render: {time.time() - t0:.0f} s")
+        bad = frame_check(d / "final.mp4", load(d / "props.json")["scenes"])
+        if bad:
+            raise RuntimeError("3D render looks empty: " + "; ".join(bad))
     if s.get("seri") and s.get("episode") and slot:  # counted once the episode exists; test runs are not
         with open(ROOT / "data" / "series.jsonl", "a") as fh:
             fh.write(json.dumps({"run": rid, "seri": s["seri"], "episode": s["episode"], "mode": s.get("mode"),
@@ -601,4 +743,5 @@ if __name__ == "__main__":
         idea = next((i for i in load(a[k + 1])["ideas"] if i.get("slot") == a[k + 2]), None)
     main(a[0], a[a.index("--script") + 1] if "--script" in a else None,
          a[a.index("--topic") + 1] if "--topic" in a else None, idea, a[a.index("--style") + 1] if "--style" in a else None,
-         a[a.index("--ending") + 1] if "--ending" in a else None, a[a.index("--mode") + 1] if "--mode" in a else None)
+         a[a.index("--ending") + 1] if "--ending" in a else None, a[a.index("--mode") + 1] if "--mode" in a else None,
+         a[a.index("--world") + 1] if "--world" in a else None)
