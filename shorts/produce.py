@@ -512,27 +512,33 @@ def brief_for(idea=None, topic=None):
     return {"judul_yang_sudah_pernah_dibuat": made, "saran_pencarian_youtube": suggestions()}
 
 
-def write_draft(brief, three, ending, mode, model):
-    """One full draft script (with web search for the facts); fails early when even the checker could not save it."""
+def opus(system, user):
+    return claude_json("opus", system, user, web=True)
+
+
+def write_draft(brief, three, ending, mode, ask=opus):
+    """One full draft script; ask(system, user) -> dict is the writer (Opus here, the Peran AI writer in the 19:00
+    research). Fails early when even the checker could not save it."""
     writer, _ = prompts(three, ending, mode)
-    draft = claude_json(model, writer, json.dumps(brief, ensure_ascii=False), web=True)
+    draft = ask(writer, json.dumps(brief, ensure_ascii=False))
     (tidy3d if three else tidy)(json.loads(json.dumps(draft)))
     return draft
 
 
-def check_draft(draft, three, ending, mode):
-    """Opus fact-checks and fixes a draft; a "tuntas" ending that still dangles gets one more pass."""
+def check_draft(draft, three, ending, mode, ask=opus):
+    """The checker (Opus, or the Peran AI checker) fact-checks and fixes a draft; a "tuntas" ending that still dangles
+    gets one more pass."""
     _, checker = prompts(three, ending, mode)
     fix = tidy3d if three else tidy
-    checked = claude_json("opus", checker, json.dumps(draft, ensure_ascii=False), web=True)
+    checked = ask(checker, json.dumps(draft, ensure_ascii=False))
     for issue in checked.get("issues", []):
         log("fixed:", issue)
     s = fix(checked.get("script") or draft)
     if ending == "tuntas" and cliffhanger(s):  # one more pass with the ending as the only job
         log("ending is a cliffhanger, asking the checker to resolve it:", s["scenes"][-1]["text"])
-        again = claude_json("opus", checker, json.dumps(
+        again = ask(checker, json.dumps(
             {**s, "catatan_editor": "Adegan terakhir menggantung. Tulis ulang HANYA adegan terakhir jadi penyelesaian "
-             "tuntas berupa kalimat lengkap yang maknanya menyambung ke kalimat pertama."}, ensure_ascii=False), web=False)
+             "tuntas berupa kalimat lengkap yang maknanya menyambung ke kalimat pertama."}, ensure_ascii=False))
         s = fix(again.get("script") or s)
         if cliffhanger(s):
             raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
@@ -555,7 +561,7 @@ def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, 
         if idea:
             log(f"idea: kamu jadi {idea['topic']} | {idea.get('hook', '')}")
         log(f"ending: {ending}, mode: {mode}")
-        draft = write_draft(brief, three, ending, mode, "opus")
+        draft = write_draft(brief, three, ending, mode)
         save(d / "script.draft.json", draft)
         print("STAGE cek", flush=True)
         s = check_draft(draft, three, ending, mode)

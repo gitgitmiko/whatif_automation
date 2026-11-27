@@ -19,7 +19,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
-from common import claude_json, load, log, save  # noqa: E402
+from common import load, log, save  # noqa: E402
+from peran import ask_json, asker  # noqa: E402
 from produce import ENDING_BY_SLOT, SERIES, brief_for, check_draft, write_draft  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
@@ -149,7 +150,6 @@ def own_performance():
 SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
 
 
-DRAFT_MODEL = "sonnet"            # writes the ideas and the draft scripts; Opus judges and fact-checks
 ENDING = ENDING_BY_SLOT["slot1"]   # every slot ends on the loop
 
 JUDGE_SYS = """Kamu juri YouTube Shorts "Gimana Jadinya?" (POV profesi, animasi 3D 30-40 detik, penonton Indonesia) yang
@@ -163,22 +163,21 @@ Balas HANYA JSON: {"nilai":[angka per naskah sesuai urutan],"alasan":["1 kalimat
 
 
 def judge(drafts):
-    """Opus scores every draft (Sonnet when Opus is unavailable); fills nilai/alasan, returns the judge's name."""
+    """The Peran AI judge (Opus by default) scores every draft; fills nilai/alasan, returns who judged."""
     listing = "\n\n".join(
         f"NASKAH {k + 1} [{x['idea']['mode']}] \"{x['draft'].get('yt_title') or x['draft'].get('title')}\"\n"
         + "\n".join(sc.get("text", "") for sc in x["draft"].get("scenes", [])) for k, x in enumerate(drafts))
-    for model in ("opus", "sonnet"):
-        try:
-            j = claude_json(model, JUDGE_SYS, listing)
-            nilai, alasan = j.get("nilai") or [], j.get("alasan") or []
-            for k, x in enumerate(drafts):
-                x["nilai"] = nilai[k] if k < len(nilai) else None
-                x["alasan"] = alasan[k] if k < len(alasan) else ""
-            log(f"juri {model}: {nilai}")
-            return model
-        except Exception as e:  # noqa: BLE001 - try the next judge
-            log(f"juri {model} gagal: {str(e)[:200]}")
-    return None
+    try:
+        j, who = ask_json("juri", JUDGE_SYS, listing)
+    except Exception as e:  # noqa: BLE001 - without a judge the drafts keep their writing order
+        log(f"juri gagal: {str(e)[:200]}")
+        return None
+    nilai, alasan = j.get("nilai") or [], j.get("alasan") or []
+    for k, x in enumerate(drafts):
+        x["nilai"] = nilai[k] if k < len(nilai) else None
+        x["alasan"] = alasan[k] if k < len(alasan) else ""
+    log(f"juri {who}: {nilai}")
+    return who
 
 
 def pick(drafts):
@@ -193,7 +192,7 @@ def pick(drafts):
             while pools[mode] and slot not in chosen:
                 x = pools[mode].pop(0)
                 try:
-                    x["script"] = check_draft(x["draft"], True, ENDING, mode)
+                    x["script"] = check_draft(x["draft"], True, ENDING, mode, asker("cek"))
                 except Exception as e:  # noqa: BLE001 - the next best takes the slot
                     log(f"cek fakta gagal untuk '{x['idea']['topic']}': {str(e)[:200]}")
                     x["status"] = "gagal cek fakta"
@@ -217,7 +216,8 @@ def main(day=None):
     if own:
         brief["performa_channel_sendiri"] = own
         log(f"own analytics: {len(own['terbaik'])} best, {len(own['terlemah'])} weakest")
-    out = claude_json(DRAFT_MODEL, SYS, json.dumps(brief, ensure_ascii=False), web=True)
+    out, who = ask_json("riset", SYS, json.dumps(brief, ensure_ascii=False), web=True)
+    log(f"riset oleh {who}")
     ideas = [i for i in out.get("ideas", []) if i.get("topic")]
     if not ideas:
         raise RuntimeError("no ideas in Claude's reply")
@@ -230,7 +230,7 @@ def main(day=None):
     drafts = []
     for i in ideas:
         try:
-            drafts.append({"idea": i, "draft": write_draft(brief_for(i), True, ENDING, i["mode"], DRAFT_MODEL)})
+            drafts.append({"idea": i, "draft": write_draft(brief_for(i), True, ENDING, i["mode"], asker("penulis"))})
         except Exception as e:  # noqa: BLE001 - one bad draft does not stop the research
             log(f"draf '{i['topic']}' gagal: {str(e)[:200]}")
     if not drafts:
