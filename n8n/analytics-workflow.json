@@ -134,7 +134,10 @@
     "specifyBody": "json",
     "jsonBody": "={{ JSON.stringify({ report: $json }) }}",
     "options": {}
-   }
+   },
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 2000
   },
   {
    "id": "a5",
@@ -238,7 +241,11 @@
     "specifyBody": "json",
     "jsonBody": "={{ JSON.stringify({ youtube_id: $('Video 30 hari').item.json.youtube_id, report: $json }) }}",
     "options": {}
-   }
+   },
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 2000,
+   "onError": "continueRegularOutput"
   }
  ],
  "connections": {

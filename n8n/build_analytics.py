@@ -32,10 +32,13 @@ def report(i, name, pos, query):
         "options": {"timeout": 60000}}, credentials=CRED, onError="continueRegularOutput")
 
 
-def post(i, name, pos, path, body):
+def post(i, name, pos, path, body, **extra):
+    # server.py (http.server) closes each connection after replying; n8n sometimes reuses it and gets ECONNRESET,
+    # so a failed POST is simply tried again on a fresh connection.
     return node(i, name, "httpRequest", 4.2, pos, {
         "method": "POST", "url": f"{API}{path}", "sendHeaders": True, "headerParameters": header(),
-        "sendBody": True, "specifyBody": "json", "jsonBody": body, "options": {}})
+        "sendBody": True, "specifyBody": "json", "jsonBody": body, "options": {}},
+        retryOnFail=True, maxTries=3, waitBetweenTries=2000, **extra)
 
 
 nodes = [
@@ -56,7 +59,8 @@ nodes = [
         "ids": "channel==MINE", "startDate": FROM, "endDate": TODAY, "dimensions": "elapsedVideoTimeRatio",
         "metrics": "audienceWatchRatio,relativeRetentionPerformance", "filters": "=video=={{ $json.youtube_id }}"}),
     post(7, "Kirim retensi", [1200, 100], "/api/stats/retention",
-         "={{ JSON.stringify({ youtube_id: $('Video 30 hari').item.json.youtube_id, report: $json }) }}"),
+         "={{ JSON.stringify({ youtube_id: $('Video 30 hari').item.json.youtube_id, report: $json }) }}",
+         onError="continueRegularOutput"),  # one video that still fails must not stop the others
 ]
 connections = {"Jadwal 05:30": [["Laporan per video"]], "Tes manual": [["Laporan per video"]],
                "Jalankan via webhook": [["Laporan per video"]],

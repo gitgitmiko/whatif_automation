@@ -427,6 +427,8 @@ def main():
         c.execute("UPDATE runs SET status='failed', error='service restarted mid-run', stage=NULL WHERE status='running'")
     threading.Thread(target=scheduler, daemon=True).start()
     log(f"gimana jadinya listening on {HOST}:{PORT}; ideas at {IDEAS_AT}; productions at " + ", ".join(f"{s} {m} (upload {u})" for s, (m, u) in SLOTS.items()))
+    # n8n posts the daily analytics ~45 requests at once; the default backlog of 5 reset the rest (ECONNRESET).
+    ThreadingHTTPServer.request_queue_size = 128
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()
 
 
