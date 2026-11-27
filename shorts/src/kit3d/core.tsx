@@ -57,8 +57,9 @@ export const Rig: React.FC<{look: Look; frame: number; night: boolean}> = ({look
   cam.far = 2000;
   cam.updateProjectionMatrix();
   // a world may paint its own sky (inside the body); otherwise dusk, or night
-  scene.background = new THREE.Color(look.sky ?? (night ? '#0b1024' : '#f0a25a'));
-  scene.fog = new THREE.Fog(look.sky ?? (night ? '#0b1024' : '#f3b77a'), 60, night ? 380 : 650);
+  const sky = look.sky && !night ? look.sky : undefined;  // night (horror) always wins over a set's own sky
+  scene.background = new THREE.Color(sky ?? (night ? '#0b1024' : '#f0a25a'));
+  scene.fog = new THREE.Fog(sky ?? (night ? '#0b1024' : '#f3b77a'), 60, night ? 380 : 650);
   return null;
 };
 

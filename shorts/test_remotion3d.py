@@ -211,7 +211,14 @@ def test_scene_can_cut_to_tubuh():
                     {"text": "Paru-parumu terisi asap.", "world": "tubuh", "shot": "paru", "latar": "dapur", "props": [{"jenis": "kompor", "di": "meja"}]},
                     {"text": "Jantung berdebar.", "world": "tubuh", "shot": "terbang"},
                     {"text": "Kembali ke warung.", "world": "bulan", "shot": "wajah"}]}
-    t = produce.tidy_remotion(s)
+    import copy
+    off = produce.tidy_remotion(copy.deepcopy(s))  # tubuh not yet approved: the cut becomes a normal scene
+    assert all("world" not in x for x in off["scenes"]), [x.get("world") for x in off["scenes"]]
+    produce.WORLDS["tubuh"]["aktif"] = True
+    try:
+        t = produce.tidy_remotion(s)
+    finally:
+        produce.WORLDS["tubuh"]["aktif"] = False
     sc = t["scenes"]
     assert sc[1]["world"] == "tubuh" and sc[1]["shot"] == "paru" and sc[1].get("props") == [] and "latar" not in sc[1]
     assert sc[2]["world"] == "tubuh" and sc[2]["shot"] in produce.WORLDS["tubuh"]["shots"]
@@ -223,6 +230,29 @@ def test_scene_can_cut_to_tubuh():
         assert "   - jantung: jantung berdetak" in w and '"world":"tubuh"' in w
     finally:
         produce.WORLDS["tubuh"]["aktif"] = False
+
+
+def test_tidy_remotion_odd_types():
+    import produce
+    s = {"world": "kereta", "title": "T", "scenes": [{"text": "Satu dua.", "shot": "cab", "world": ["tubuh"]},
+         {"text": "Tiga.", "shot": "top"}, {"text": "Empat.", "shot": "wheel"}, {"text": "Lima.", "shot": "stop"}]}
+    assert "world" not in produce.tidy_remotion(s)["scenes"][0]
+    s = {"world": "profesi", "title": "T", "scenes": [{"text": "Satu.", "shot": "lebar", "latar": ["dapur"]},
+         {"text": "Dua.", "shot": "wajah"}, {"text": "Tiga.", "shot": "pov"}, {"text": "Empat.", "shot": "detail"}]}
+    assert produce.tidy_remotion(s)["scenes"][0]["latar"] == "dapur"
+
+
+def test_catalog_without_props_still_imports():
+    import subprocess, tempfile, shutil
+    tmp = Path(tempfile.mkdtemp())
+    shutil.copytree(HERE.parent / "pipeline", tmp / "pipeline")
+    (tmp / "shorts").mkdir()
+    shutil.copy(HERE / "produce.py", tmp / "shorts")
+    cat = json.loads((HERE / "worlds.json").read_text())
+    del cat["tubuh"]["props"]
+    (tmp / "shorts" / "worlds.json").write_text(json.dumps(cat))
+    r = subprocess.run([sys.executable, "-c", "import produce; print(sorted(produce.INSETS))"], cwd=tmp / "shorts", capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-500:]
 
 
 def _clip(src, out):

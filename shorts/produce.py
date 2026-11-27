@@ -209,7 +209,7 @@ HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 # Worlds a scene of any other world may cut to for one shot (no sets, props or hero of their own).
-INSETS = {k for k, v in WORLDS.items() if not v.get("latar") and not v["props"]}
+INSETS = {k for k, v in WORLDS.items() if not v.get("latar") and not v.get("props")}
 
 
 def _tidy_common(x):
@@ -240,8 +240,8 @@ def tidy_remotion(s):
     names = list(w["shots"])
     prev, place = None, None
     for i, x in enumerate(scenes):
-        inset = x.get("world")
-        if inset in INSETS and inset != s["world"]:  # a cut to a shared world (inside the body) for one scene
+        inset = x.get("world") if isinstance(x.get("world"), str) else None
+        if inset in INSETS and inset != s["world"] and WORLDS[inset].get("aktif"):  # an unapproved world never renders  # a cut to a shared world (inside the body) for one scene
             x["shot"] = x.get("shot") if x.get("shot") in WORLDS[inset]["shots"] else next(iter(WORLDS[inset]["shots"]))
             x["props"] = []
             for k in ("latar", "efek", "hero_pose", "hero_expr"):
@@ -251,7 +251,8 @@ def tidy_remotion(s):
             continue
         x.pop("world", None)
         if w.get("latar"):  # a world of sets: a missing or unknown latar continues the previous one
-            place = x["latar"] = x.get("latar") if x.get("latar") in w["latar"] else place or next(iter(w["latar"]))
+            own = x.get("latar") if isinstance(x.get("latar"), str) else None
+            place = x["latar"] = own if own in w["latar"] else place or next(iter(w["latar"]))
             if x.get("efek") not in w.get("efek", []):
                 x.pop("efek", None)
         if x.get("shot") not in w["shots"] or x["shot"] == prev:
