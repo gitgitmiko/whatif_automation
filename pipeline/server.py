@@ -28,7 +28,7 @@ WIB = dt.timezone(dt.timedelta(hours=7))
 # fact-checking); the rest of the hour and a half is room for a retry.
 # Every production starts after midnight: the scheduler, ideas_due and todays() compare times within one day.
 SLOTS = {"slot1": ("01:00", "10:00"), "slot2": ("02:30", "12:00"), "slot3": ("04:00", "15:00"), "slot4": ("05:30", "18:00"), "slot5": ("07:00", "20:00")}
-IDEAS_AT = "00:00"  # shorts/ideas.py reads what is pulling views now and plans the 5 slots
+IDEAS_AT = "19:00"  # shorts/ideas.py researches, drafts and judges TOMORROW's 5 Shorts (Sonnet writes, Opus judges)
 IDEAS = ROOT / "data" / "ideas"
 STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
@@ -39,7 +39,7 @@ PIPE = ROOT / "pipeline"
 DB = ROOT / "data" / "whatif.db"
 lock = threading.Lock()
 ANALYTICS = ROOT / "data" / "analytics"
-state = {"busy": None, "ideas": None}  # ideas: when today's research last started
+state = {"busy": None, "ideas": None, "researching": False}  # ideas: when the evening research last started
 
 
 def db():
@@ -97,12 +97,17 @@ def produce(slot):
     try:
         ideas = IDEAS / f"{now():%Y-%m-%d}.json"
         cmd = [PYTHON, SHORTS / "produce.py", rid]
-        if ideas.exists() and any(i.get("slot") == slot for i in load(ideas).get("ideas", [])):
-            cmd += ["--idea", ideas, slot]  # without today's research the writer picks a topic itself
+        idea = next((i for i in load(ideas).get("ideas", []) if i.get("slot") == slot), None) if ideas.exists() else None
+        three = ["--style", "3d"]
+        if idea:
+            cmd += ["--idea", ideas, slot]  # without the evening's research the writer picks a topic itself
+            if idea.get("script"):  # judged and fact-checked at 19:00: render it as is (3D; the cartoon fallback writes its own)
+                save(d / "script.research.json", idea["script"])
+                three += ["--script", d / "script.research.json"]
         with open(d / "run.log", "w") as f:
             if now().date().isoformat() >= STYLE_3D_FROM:
                 try:
-                    subprocess.run(cmd + ["--style", "3d"], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
+                    subprocess.run(cmd + three, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
                                    check=True, timeout=2700)
                     cmd = None
                 except Exception as e:  # Flow down or out of quota: the same slot in the cartoon style still uploads
@@ -133,21 +138,26 @@ def start(slot):
 
 
 def research():
-    with open(ROOT / "data" / "ideas.log", "a") as f:
-        f.write(f"\n=== {now().isoformat()}\n")
-        f.flush()
-        r = subprocess.run([PYTHON, SHORTS / "ideas.py", now().date().isoformat()], stdout=f, stderr=subprocess.STDOUT,
-                           cwd=ROOT, timeout=3600)
-    log("ideas:", "ready" if r.returncode == 0 else f"failed ({r.returncode}), see data/ideas.log")
+    """Tomorrow's research, drafts and judging (an hour or more: 10 draft scripts with web search)."""
+    day = (now().date() + dt.timedelta(days=1)).isoformat()
+    try:
+        with open(ROOT / "data" / "ideas.log", "a") as f:
+            f.write(f"\n=== {now().isoformat()} (untuk {day})\n")
+            f.flush()
+            r = subprocess.run([PYTHON, SHORTS / "ideas.py", day], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, timeout=3 * 3600)
+        log("ideas:", "ready" if r.returncode == 0 else f"failed ({r.returncode}), see data/ideas.log")
+    except Exception as e:  # noqa: BLE001 - the scheduler retries
+        log("ideas failed:", e)
+    finally:
+        state["researching"] = False
 
 
 def ideas_due(t):
-    """Today's research runs from 06:00, again 15 minutes after a failure, until the first production starts."""
+    """Tomorrow's research runs from 19:00 until midnight, once at a time, again 15 minutes after a failure."""
     start_at = t.replace(hour=int(IDEAS_AT[:2]), minute=int(IDEAS_AT[3:]), second=0, microsecond=0)
-    first = min(SLOTS.values())[0]
-    stop = t.replace(hour=int(first[:2]), minute=int(first[3:]), second=0, microsecond=0)
+    tomorrow = (t.date() + dt.timedelta(days=1)).isoformat()
     last = state["ideas"]
-    return (start_at <= t < stop and not (IDEAS / f"{t.date().isoformat()}.json").exists()
+    return (t >= start_at and not state["researching"] and not (IDEAS / f"{tomorrow}.json").exists()
             and ENV.get("PAUSE_PRODUCTION") != "1" and (last is None or t - last > dt.timedelta(minutes=15)))
 
 
@@ -163,8 +173,8 @@ def scheduler():
     while True:
         t = now()
         if ideas_due(t):
-            state["ideas"] = t
-            log("scheduler: researching today's ideas")
+            state["ideas"], state["researching"] = t, True
+            log("scheduler: researching tomorrow's Shorts")
             threading.Thread(target=research, daemon=True).start()
         for slot, (make, up) in SLOTS.items():
             due = t.replace(hour=int(make[:2]), minute=int(make[3:]), second=0, microsecond=0)

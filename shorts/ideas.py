@@ -1,14 +1,17 @@
-"""The day's three ideas, picked at 06:00 from Shorts that are pulling big views right now -> data/ideas/<date>.json
+"""The next day's five Shorts, researched and judged at 19:00 -> data/ideas/<tomorrow>.json
 
   riset  yt-dlp reads the latest Shorts of proven explainer channels and marks the outliers (views far above the
          channel's own median), plus this month's most-viewed Shorts for a few POV / fact searches; the opening lines
          of the biggest ones are fetched to see how they hook
-  ide    Claude (with web search) turns what makes those winners work into three "kalau kamu jadi <profesi>" ideas,
-         one per slot (slot1-slot5), each with its angle, a draft hook and the videos it learned from
+  ide    Sonnet (with web search) turns what makes those winners and what is viral now into 10 "kalau kamu jadi
+         <profesi>" ideas (8 fakta, 2 horor)
+  naskah Sonnet writes a full draft script for every idea
+  juri   Opus scores every draft for its chance of views; the best 4 fakta go to slot1-slot4, the best horor to
+         slot5, and Opus fact-checks each winner (a draft that fails the check gives way to the next best)
 
-produce.py then writes each slot's Short from its idea (server.py passes --idea).
+server.py's productions (01:00-07:00) then render each slot's checked script (produce.py --script).
 
-  .venv/bin/python shorts/ideas.py [YYYY-MM-DD]
+  .venv/bin/python shorts/ideas.py [YYYY-MM-DD]     # default: tomorrow
 """
 import base64, datetime as dt, json, statistics, subprocess, sys, time, urllib.parse
 from pathlib import Path
@@ -17,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import claude_json, load, log, save  # noqa: E402
-from produce import MODE_BY_SLOT, SERIES  # noqa: E402
+from produce import ENDING_BY_SLOT, SERIES, brief_for, check_draft, write_draft  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
 YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
@@ -103,19 +106,19 @@ Kamu menerima data Shorts yang sedang meledak: "outlier_channel" (video terbaru 
 
 Tugas:
 1. Pelajari KENAPA video-video itu menang: momen apa yang memancing rasa penasaran (bahaya, keputusan sepersekian detik, angka gila, rahasia di balik pekerjaan, "ternyata begini caranya"), dan bagaimana hook-nya dibuka.
-2. Terjemahkan jadi 5 ide POV PROFESI untuk hari ini, satu per slot (slot1 tayang 10:00, slot2 12:00, slot3 15:00, slot4 18:00, slot5 20:00). Kelima ide harus beda profesi dan mencakup ketiga kelompok ini:
+2. Terjemahkan jadi 10 ide POV PROFESI untuk besok: 8 bermode "fakta" dan 2 bermode "horor". Kesepuluh ide harus beda profesi dan mencakup ketiga kelompok ini:
    - satu profesi sehari-hari yang akrab di Indonesia (driver ojol, kasir minimarket, tukang parkir, satpam, petugas tol, montir bengkel, penjual bakso, kurir paket, petugas SPBU, dll.),
    - satu profesi berbahaya atau berisiko tinggi (pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN di tiang, ABK kapal, penambang, petugas jalan tol malam, dll.),
    - satu profesi di balik layar yang jarang dilihat orang (petugas menara ATC, dokter IGD, operator bendungan, penjaga mercusuar, teknisi lift, petugas forensik, penerjemah bahasa isyarat, dll.).
-   Rumus tiap ide: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir). Ide slot1 sampai slot4 bermode "fakta": berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Ide slot5 bermode "horor": cerita horor FIKSI orisinal di pekerjaan nyata (paling cocok profesi shift malam atau tempat sepi), ketakutan dari detail janggal (CCTV, jam, panggilan, pintu terkunci, suara dari ruang kosong) tanpa darah, sadis, atau agama/ritual tertentu, tetap dengan 2-3 fakta nyata tentang prosedur atau alat profesinya. Boleh pakai pencarian web untuk memastikan faktanya.
+   Rumus tiap ide: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir). Ide bermode "fakta": berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Ide bermode "horor": cerita horor FIKSI orisinal di pekerjaan nyata (paling cocok profesi shift malam atau tempat sepi), ketakutan dari detail janggal (CCTV, jam, panggilan, pintu terkunci, suara dari ruang kosong) tanpa darah, sadis, atau agama/ritual tertentu, tetap dengan 2-3 fakta nyata tentang prosedur atau alat profesinya. Boleh pakai pencarian web untuk memastikan faktanya.
    Tiap ide masuk SATU seri: {SERIES}.
 3. Hormati profesinya (horor pun tanpa humor dan tanpa merendahkan): nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
-4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: sekitar 70% ide (3-4 dari 5) adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), 1-2 ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
+4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: sekitar 70% ide (7 dari 10) adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), 2-3 ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
 5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
 
 Balas HANYA JSON:
 {"insight":"3-5 kalimat: pola yang sedang menang hari ini",
- "ideas":[{"slot":"slot1|slot2|slot3|slot4|slot5","mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
+ "ideas":[{"mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
    "angle":"1-2 kalimat: momen krisis yang dialami dan rasa penasaran yang dijual",
    "hook":"draf kalimat pertama dengan sudut pandang 'kamu': langsung di tengah krisis, ada taruhan nyata (nyawa, uang, waktu, malu), maks 14 kata, tanpa 'gimana jadinya'",
    "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek (horor: fakta nyata tentang profesinya, plus 1 kalimat twist fiksinya)"],
@@ -146,8 +149,61 @@ def own_performance():
 SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
 
 
+DRAFT_MODEL = "sonnet"            # writes the ideas and the draft scripts; Opus judges and fact-checks
+ENDING = ENDING_BY_SLOT["slot1"]   # every slot ends on the loop
+
+JUDGE_SYS = """Kamu juri YouTube Shorts "Gimana Jadinya?" (POV profesi, animasi 3D 30-40 detik, penonton Indonesia) yang
+galak, dengan target VIEWS setinggi mungkin. Diberi beberapa naskah. Nilai tiap naskah 1-10 dari peluangnya ditonton
+banyak orang dan ditonton sampai habis: kalimat pertama yang langsung di tengah krisis dengan taruhan nyata, rasa
+penasaran yang menahan penonton, satu belokan yang mengejutkan, fakta yang bikin "ternyata begitu", judul yang bikin
+klik, dan nyambung dengan yang sedang ramai (nilai plus). Potong nilai keras untuk: hook lemah atau pembuka suasana,
+cerita datar, premis mirip yang sudah dibuat, nada mengejek profesi, atau fakta yang meragukan.
+Bandingkan antar naskah; jangan beri semua nilai yang sama.
+Balas HANYA JSON: {"nilai":[angka per naskah sesuai urutan],"alasan":["1 kalimat per naskah, sesuai urutan"]}"""
+
+
+def judge(drafts):
+    """Opus scores every draft (Sonnet when Opus is unavailable); fills nilai/alasan, returns the judge's name."""
+    listing = "\n\n".join(
+        f"NASKAH {k + 1} [{x['idea']['mode']}] \"{x['draft'].get('yt_title') or x['draft'].get('title')}\"\n"
+        + "\n".join(sc.get("text", "") for sc in x["draft"].get("scenes", [])) for k, x in enumerate(drafts))
+    for model in ("opus", "sonnet"):
+        try:
+            j = claude_json(model, JUDGE_SYS, listing)
+            nilai, alasan = j.get("nilai") or [], j.get("alasan") or []
+            for k, x in enumerate(drafts):
+                x["nilai"] = nilai[k] if k < len(nilai) else None
+                x["alasan"] = alasan[k] if k < len(alasan) else ""
+            log(f"juri {model}: {nilai}")
+            return model
+        except Exception as e:  # noqa: BLE001 - try the next judge
+            log(f"juri {model} gagal: {str(e)[:200]}")
+    return None
+
+
+def pick(drafts):
+    """slot -> checked draft: best 4 fakta to slot1-slot4, best horor to slot5; a failed fact-check gives way to the
+    next best of the same mode, and a missing horor falls back to the best fakta left."""
+    best = lambda mode: sorted((x for x in drafts if x["idea"]["mode"] == mode), key=lambda x: x.get("nilai") or 0, reverse=True)
+    pools = {"fakta": best("fakta"), "horor": best("horor")}
+    chosen = {}
+    for slot in SLOTS:
+        want = "horor" if slot == "slot5" else "fakta"
+        for mode in ([want, "fakta"] if want == "horor" else [want]):
+            while pools[mode] and slot not in chosen:
+                x = pools[mode].pop(0)
+                try:
+                    x["script"] = check_draft(x["draft"], True, ENDING, mode)
+                except Exception as e:  # noqa: BLE001 - the next best takes the slot
+                    log(f"cek fakta gagal untuk '{x['idea']['topic']}': {str(e)[:200]}")
+                    x["status"] = "gagal cek fakta"
+                    continue
+                x["slot"], chosen[slot] = slot, x
+    return chosen
+
+
 def main(day=None):
-    day = day or dt.date.today().isoformat()
+    day = day or (dt.date.today() + dt.timedelta(days=1)).isoformat()  # researched the evening before
     IDEAS.mkdir(parents=True, exist_ok=True)
     print("STAGE riset", flush=True)
     outliers, hits = channel_outliers(), search_hits()
@@ -161,20 +217,38 @@ def main(day=None):
     if own:
         brief["performa_channel_sendiri"] = own
         log(f"own analytics: {len(own['terbaik'])} best, {len(own['terlemah'])} weakest")
-    out = claude_json("opus", SYS, json.dumps(brief, ensure_ascii=False), web=True)
-    ideas = {i.get("slot"): i for i in out.get("ideas", []) if i.get("topic")}
-    if not all(s in ideas for s in SLOTS):  # slots mislabelled: hand them out in order
-        ideas = dict(zip(SLOTS, [i for i in out.get("ideas", []) if i.get("topic")]))
+    out = claude_json(DRAFT_MODEL, SYS, json.dumps(brief, ensure_ascii=False), web=True)
+    ideas = [i for i in out.get("ideas", []) if i.get("topic")]
     if not ideas:
         raise RuntimeError("no ideas in Claude's reply")
-    for s, i in ideas.items():
-        i["slot"] = s
-        i["mode"] = MODE_BY_SLOT[s] if s in MODE_BY_SLOT else i.get("mode", "fakta")
+    for i in ideas:
+        i["mode"] = "horor" if i.get("mode") == "horor" else "fakta"
         if i.get("seri") not in SERIES:
             i.pop("seri", None)
-        log(f"{s}: kamu jadi {i['topic']} | {i.get('hook', '')}")
-    save(IDEAS / f"{day}.json", {"date": day, "insight": out.get("insight"), "ideas": list(ideas.values()),
-                                 "data": {"outliers": outliers, "search": hits}})
+        log(f"ide [{i['mode']}]: kamu jadi {i['topic']} | {i.get('hook', '')}")
+    print("STAGE naskah", flush=True)
+    drafts = []
+    for i in ideas:
+        try:
+            drafts.append({"idea": i, "draft": write_draft(brief_for(i), True, ENDING, i["mode"], DRAFT_MODEL)})
+        except Exception as e:  # noqa: BLE001 - one bad draft does not stop the research
+            log(f"draf '{i['topic']}' gagal: {str(e)[:200]}")
+    if not drafts:
+        raise RuntimeError("no draft script could be written")
+    print("STAGE juri", flush=True)
+    juri = judge(drafts)
+    chosen = pick(drafts)
+    if not chosen:
+        raise RuntimeError("no draft passed the fact-check")
+    slots = [{**x["idea"], "slot": s, "mode": x["script"].get("mode") or x["idea"]["mode"], "nilai": x.get("nilai"),
+              "alasan": x.get("alasan", ""), "script": x["script"]} for s, x in chosen.items()]
+    for x in slots:
+        log(f"{x['slot']} ({x['nilai']}): kamu jadi {x['topic']} | {x['script'].get('yt_title')}")
+    summary = [{"topic": x["idea"]["topic"], "mode": x["idea"]["mode"], "title": x["draft"].get("yt_title") or x["draft"].get("title"),
+                "hook": (x["draft"].get("scenes") or [{}])[0].get("text", ""), "nilai": x.get("nilai"), "alasan": x.get("alasan", ""),
+                "slot": x.get("slot"), "status": x.get("status")} for x in drafts]
+    save(IDEAS / f"{day}.json", {"date": day, "insight": out.get("insight"), "juri": juri or "tidak ada (urutan tulis)",
+                                 "ideas": slots, "drafts": summary, "data": {"outliers": outliers, "search": hits}})
     log("saved", IDEAS / f"{day}.json")
 
 

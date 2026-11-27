@@ -501,50 +501,70 @@ def render(d, pub):
                    timeout=1800)
 
 
+def brief_for(idea=None, topic=None):
+    """What the writer gets: the research idea (or a forced topic) and the titles already made."""
+    made = previous_titles()
+    if idea:
+        return {"topik_wajib": f"kamu jadi {idea['topic']}", "ide_dari_riset": {k: idea.get(k) for k in (
+            "angle", "hook", "facts", "inspired_by", "seri")}, "judul_yang_sudah_pernah_dibuat": made}
+    if topic:
+        return {"topik_wajib": f"kamu jadi {topic}", "judul_yang_sudah_pernah_dibuat": made}
+    return {"judul_yang_sudah_pernah_dibuat": made, "saran_pencarian_youtube": suggestions()}
+
+
+def write_draft(brief, three, ending, mode, model):
+    """One full draft script (with web search for the facts); fails early when even the checker could not save it."""
+    writer, _ = prompts(three, ending, mode)
+    draft = claude_json(model, writer, json.dumps(brief, ensure_ascii=False), web=True)
+    (tidy3d if three else tidy)(json.loads(json.dumps(draft)))
+    return draft
+
+
+def check_draft(draft, three, ending, mode):
+    """Opus fact-checks and fixes a draft; a "tuntas" ending that still dangles gets one more pass."""
+    _, checker = prompts(three, ending, mode)
+    fix = tidy3d if three else tidy
+    checked = claude_json("opus", checker, json.dumps(draft, ensure_ascii=False), web=True)
+    for issue in checked.get("issues", []):
+        log("fixed:", issue)
+    s = fix(checked.get("script") or draft)
+    if ending == "tuntas" and cliffhanger(s):  # one more pass with the ending as the only job
+        log("ending is a cliffhanger, asking the checker to resolve it:", s["scenes"][-1]["text"])
+        again = claude_json("opus", checker, json.dumps(
+            {**s, "catatan_editor": "Adegan terakhir menggantung. Tulis ulang HANYA adegan terakhir jadi penyelesaian "
+             "tuntas berupa kalimat lengkap yang maknanya menyambung ke kalimat pertama."}, ensure_ascii=False), web=False)
+        s = fix(again.get("script") or s)
+        if cliffhanger(s):
+            raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
+    return s
+
+
 def main(rid, script_file=None, topic=None, idea=None, style=None, ending=None, mode=None):
     d = RUNS / rid
     slot = (idea or {}).get("slot") or next((x for x in rid.split("-") if x in ENDING_BY_SLOT), "")
     ending = ending if ending in ENDINGS else ENDING_BY_SLOT.get(slot, "tuntas")
     mode = mode if mode in ("fakta", "horor") else (idea or {}).get("mode") or MODE_BY_SLOT.get(slot, "fakta")
     d.mkdir(parents=True, exist_ok=True)
-    if script_file:
+    three = style == "3d"
+    if script_file:  # naskah jadi dari riset 19:00 (ditulis Sonnet, dijuri & dicek Opus)
         raw = load(script_file)
-        s = tidy3d(raw) if style == "3d" or raw.get("style") == "3d" else tidy(raw)
+        s = tidy3d(raw) if three or raw.get("style") == "3d" else tidy(raw)
     else:
         print("STAGE naskah", flush=True)
-        brief = {"judul_yang_sudah_pernah_dibuat": previous_titles(), "saran_pencarian_youtube": suggestions()}
+        brief = brief_for(idea, topic)
         if idea:
-            brief = {"topik_wajib": f"kamu jadi {idea['topic']}", "ide_dari_riset": {k: idea.get(k) for k in (
-                "angle", "hook", "facts", "inspired_by", "seri")}, "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
             log(f"idea: kamu jadi {idea['topic']} | {idea.get('hook', '')}")
-        elif topic:
-            brief = {"topik_wajib": f"kamu jadi {topic}", "judul_yang_sudah_pernah_dibuat": brief["judul_yang_sudah_pernah_dibuat"]}
-        three = style == "3d"
-        writer, checker = prompts(three, ending, mode)
         log(f"ending: {ending}, mode: {mode}")
-        draft = claude_json("opus", writer, json.dumps(brief, ensure_ascii=False), web=True)
+        draft = write_draft(brief, three, ending, mode, "opus")
         save(d / "script.draft.json", draft)
-        fix = tidy3d if three else tidy
-        fix(json.loads(json.dumps(draft)))  # fail early on a draft the checker could not save
         print("STAGE cek", flush=True)
-        checked = claude_json("opus", checker, json.dumps(draft, ensure_ascii=False), web=True)
-        for issue in checked.get("issues", []):
-            log("fixed:", issue)
-        s = fix(checked.get("script") or draft)
-        if ending == "tuntas" and cliffhanger(s):  # one more pass with the ending as the only job
-            log("ending is a cliffhanger, asking the checker to resolve it:", s["scenes"][-1]["text"])
-            again = claude_json("opus", checker, json.dumps(
-                {**s, "catatan_editor": "Adegan terakhir menggantung. Tulis ulang HANYA adegan terakhir jadi penyelesaian "
-                 "tuntas berupa kalimat lengkap yang maknanya menyambung ke kalimat pertama."}, ensure_ascii=False), web=False)
-            s = fix(again.get("script") or s)
-            if cliffhanger(s):
-                raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
-        s["ending"], s["mode"] = ending, mode
-        if s.get("seri"):
-            s["episode"] = episode(s["seri"])
-            log(f"seri: {s['seri']} ep. {s['episode']}")
-        with open(ROOT / "data" / "ab_ending.jsonl", "a") as fh:
-            fh.write(json.dumps({"run": rid, "ending": ending, "title": s.get("yt_title")}, ensure_ascii=False) + "\n")
+        s = check_draft(draft, three, ending, mode)
+    s["ending"], s["mode"] = ending, mode
+    if s.get("seri"):
+        s["episode"] = episode(s["seri"])
+        log(f"seri: {s['seri']} ep. {s['episode']}")
+    with open(ROOT / "data" / "ab_ending.jsonl", "a") as fh:
+        fh.write(json.dumps({"run": rid, "ending": ending, "title": s.get("yt_title")}, ensure_ascii=False) + "\n")
     save(d / "script.json", s)
     print("STAGE suara", flush=True)
     pub = d / "public"
