@@ -1,14 +1,19 @@
 import {ThreeCanvas} from '@remotion/three';
 import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
-import {Lights, Look, Rig, Vignette, clamp} from '../kit3d/core';
+import {Anchor, Lights, Look, Rig, Vignette, clamp} from '../kit3d/core';
+import type {Hero3D} from '../kit3d/person';
+import type {PropSpec} from '../kit3d/props';
 import {kereta} from './kereta';
 
 // Every real-time 3D world, by the name the script's "world" uses (and shorts/worlds.json lists).
-export type WorldViewProps = {look: Look; frame: number; shot: string; night: boolean};
+export type WorldViewProps = {look: Look; frame: number; shot: string; night: boolean;
+  hero?: Hero3D; heroPose?: string; heroExpr?: string; props?: PropSpec[]};
 export type World = {
   shots: Record<string, (t: number, T: number) => Look>;
   View: React.FC<WorldViewProps>;
   overlay?: Record<string, React.FC<{frames: number}>>;
+  // named spots where the script may put props in this shot (none: the shot takes no props)
+  anchors?: (shot: string, look: Look) => Record<string, Anchor>;
 };
 
 export const WORLDS: Record<string, World> = {kereta};
