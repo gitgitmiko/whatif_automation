@@ -31,6 +31,7 @@ SLOTS = {"slot1": ("01:00", "10:00"), "slot2": ("02:30", "12:00"), "slot3": ("04
 IDEAS_AT = "19:00"  # shorts/ideas.py researches, drafts and judges TOMORROW's 5 Shorts (Sonnet writes, Opus judges)
 IDEAS = ROOT / "data" / "ideas"
 STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
+STYLE_REMOTION_FROM = "2099-01-01"  # from this day an idea with a 3D world is rendered in it first (shorts/src/worlds)
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
 SHORTS = ROOT / "shorts"
 PYTHON = ROOT / ".venv" / "bin" / "python"
@@ -86,6 +87,20 @@ def mark_rendered(rid, d, s):
         ensure_ascii=False))
 
 
+def attempts(idea, today, research_script):
+    """The produce.py arguments to try in order, each a fallback for the one before: the idea's real-time 3D world,
+    then Flow 3D pictures, then the cartoon style. The evening's script goes only to the style it was written for."""
+    worlds = load(SHORTS / "worlds.json")
+    world = (idea or {}).get("world")
+    styled = load(research_script).get("style") if research_script else None
+    out = []
+    if today >= STYLE_REMOTION_FROM and world in worlds:
+        out.append(["--style", "remotion3d", "--world", world] + (["--script", research_script] if styled == "remotion3d" else []))
+    if today >= STYLE_3D_FROM:
+        out.append(["--style", "3d"] + (["--script", research_script] if research_script and styled != "remotion3d" else []))
+    return out + [[]]
+
+
 def produce(slot):
     rid = f"{now():%Y%m%d}-{slot}-{secrets.token_hex(2)}"
     d = RUNS / rid
@@ -98,24 +113,28 @@ def produce(slot):
         ideas = IDEAS / f"{now():%Y-%m-%d}.json"
         cmd = [PYTHON, SHORTS / "produce.py", rid]
         idea = next((i for i in load(ideas).get("ideas", []) if i.get("slot") == slot), None) if ideas.exists() else None
-        three = ["--style", "3d"]
+        research = None
         if idea:
             cmd += ["--idea", ideas, slot]  # without the evening's research the writer picks a topic itself
-            if idea.get("script"):  # judged and fact-checked at 19:00: render it as is (3D; the cartoon fallback writes its own)
-                save(d / "script.research.json", idea["script"])
-                three += ["--script", d / "script.research.json"]
+            if idea.get("script"):  # judged and fact-checked at 19:00: render it as is in the style it was written for
+                research = d / "script.research.json"
+                save(research, idea["script"])
+        tries = attempts(idea, now().date().isoformat(), research)
         with open(d / "run.log", "w") as f:
-            if now().date().isoformat() >= STYLE_3D_FROM:
+            for k, extra in enumerate(tries):
+                last = k == len(tries) - 1
                 try:
-                    subprocess.run(cmd + three, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT,
-                                   check=True, timeout=2700)
-                    cmd = None
-                except Exception as e:  # Flow down or out of quota: the same slot in the cartoon style still uploads
-                    f.write(f"\n3D production failed ({e}); falling back to the cartoon style\n")
+                    subprocess.run(cmd + extra, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, check=True,
+                                   timeout=3600 if not extra else 2700)
+                    break
+                except Exception as e:  # world/Flow down or out of quota: the next style still makes the slot
+                    if last:
+                        raise
+                    name = extra[1] if extra else "cartoon"
+                    nxt = tries[k + 1][1] if tries[k + 1] else "cartoon"
+                    f.write(f"\n{name} production failed ({e}); falling back to {nxt}\n")
                     f.flush()
-                    log(rid, "3d failed, falling back to cartoon:", e)
-            if cmd:
-                subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, check=True, timeout=3600)
+                    log(rid, f"{name} failed, falling back to {nxt}:", e)
         s = load(d / "script.json")
         update(rid, topic=s["title"], title=s["yt_title"])
         mark_rendered(rid, d, s)
