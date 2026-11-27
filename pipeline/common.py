@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 # From this day (WIB) ideas with a real-time 3D world are researched and rendered in it (shorts/src/worlds).
-STYLE_REMOTION_FROM = "2099-01-01"
+STYLE_REMOTION_FROM = "2026-11-29"
 CLAUDE = os.path.expanduser("~/.local/bin/claude")
 CLAUDE_CWD = ROOT / "runs" / ".claude-cwd"  # empty, so no project CLAUDE.md is picked up
 
