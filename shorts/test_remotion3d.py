@@ -104,6 +104,7 @@ def test_ideas_prompt_lists_worlds():
     import ideas
     ideas.ACTIVE = True
     assert "- kereta: kereta api dan KRL" in ideas.research_sys() and '"world":' in ideas.research_sys()
+    assert "TIDAK boleh memengaruhi pilihan topik" in ideas.research_sys() and "porsi besar" not in ideas.research_sys()
 
 
 def test_server_attempts():
