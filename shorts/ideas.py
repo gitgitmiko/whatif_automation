@@ -21,7 +21,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import load, log, save  # noqa: E402
 from peran import ask_json, asker  # noqa: E402
-from produce import ENDING_BY_SLOT, SERIES, brief_for, check_draft, write_draft  # noqa: E402
+from produce import ENDING_BY_SLOT, SERIES, WORLDS, brief_for, check_draft, write_draft  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
 YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
@@ -116,10 +116,12 @@ Tugas:
 3. Hormati profesinya (horor pun tanpa humor dan tanpa merendahkan): nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
 4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: sekitar 70% ide (7 dari 10) adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), 2-3 ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
 5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
+6. DUNIA 3D YANG TERSEDIA: video dianimasikan sebagai 3D real-time di dunia yang sudah dibangun. Tiap ide WAJIB menyebut "world": nama dunia yang paling cocok dari daftar ini, atau "flow" kalau benar-benar tidak ada yang cocok (ide itu lalu digambar dengan cara lama). UTAMAKAN ide yang cocok dengan dunia yang tersedia; konten kereta sedang paling banyak ditonton di channel ini, jadi beri kereta porsi besar selama datanya masih paling kuat, tapi jangan mengulang momen yang sama.
+{WORLDS}
 
 Balas HANYA JSON:
 {"insight":"3-5 kalimat: pola yang sedang menang hari ini",
- "ideas":[{"mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
+ "ideas":[{"mode":"fakta|horor","seri":"salah satu nama seri","world":"nama dunia atau flow","topic":"nama profesi singkat, misalnya pilot pesawat",
    "angle":"1-2 kalimat: momen krisis yang dialami dan rasa penasaran yang dijual",
    "hook":"draf kalimat pertama dengan sudut pandang 'kamu': langsung di tengah krisis, ada taruhan nyata (nyawa, uang, waktu, malu), maks 14 kata, tanpa 'gimana jadinya'",
    "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek (horor: fakta nyata tentang profesinya, plus 1 kalimat twist fiksinya)"],
@@ -148,6 +150,13 @@ def own_performance():
 
 
 SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
+SYS = SYS.replace("{WORLDS}", "\n".join(f"   - {k}: {w['cocok']}" for k, w in WORLDS.items()))
+
+
+def world_of(idea):
+    """The idea's 3D world when it names one that exists; None means the old picture styles (Flow, then cartoon)."""
+    w = (idea or {}).get("world")
+    return w if w in WORLDS else None
 
 
 ENDING = ENDING_BY_SLOT["slot1"]   # every slot ends on the loop
@@ -192,7 +201,7 @@ def pick(drafts):
             while pools[mode] and slot not in chosen:
                 x = pools[mode].pop(0)
                 try:
-                    x["script"] = check_draft(x["draft"], True, ENDING, mode, asker("cek"))
+                    x["script"] = check_draft(x["draft"], True, ENDING, mode, asker("cek"), world=world_of(x["idea"]))
                 except Exception as e:  # noqa: BLE001 - the next best takes the slot
                     log(f"cek fakta gagal untuk '{x['idea']['topic']}': {str(e)[:200]}")
                     x["status"] = "gagal cek fakta"
@@ -225,12 +234,12 @@ def main(day=None):
         i["mode"] = "horor" if i.get("mode") == "horor" else "fakta"
         if i.get("seri") not in SERIES:
             i.pop("seri", None)
-        log(f"ide [{i['mode']}]: kamu jadi {i['topic']} | {i.get('hook', '')}")
+        log(f"ide [{i['mode']}/{world_of(i) or 'flow'}]: kamu jadi {i['topic']} | {i.get('hook', '')}")
     print("STAGE naskah", flush=True)
     drafts = []
     for i in ideas:
         try:
-            drafts.append({"idea": i, "draft": write_draft(brief_for(i), True, ENDING, i["mode"], asker("penulis"))})
+            drafts.append({"idea": i, "draft": write_draft(brief_for(i), True, ENDING, i["mode"], asker("penulis"), world=world_of(i))})
         except Exception as e:  # noqa: BLE001 - one bad draft does not stop the research
             log(f"draf '{i['topic']}' gagal: {str(e)[:200]}")
     if not drafts:
