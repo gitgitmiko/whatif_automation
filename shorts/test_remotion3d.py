@@ -18,7 +18,17 @@ def test_catalog_matches_ts():
         assert set(w["shots"]) == ts, (name, set(w["shots"]) ^ ts)
         for s in w["shots"].values():
             assert s["arti"] and isinstance(s["anchors"], list) and isinstance(s["tokoh"], bool)
+        if "latar" in w:  # a world built from sets: catalog latar = TS LATAR registry, effects = EFFECTS
+            reg = re.search(r"export const LATAR: Record<string, Latar> = \{([^}]*)\}", src).group(1)
+            assert set(w["latar"]) == {x.strip() for x in reg.split(",")}, (name, w["latar"].keys(), reg)
+            for k, l in w["latar"].items():
+                lsrc = (HERE / "src" / "worlds" / "latar" / f"{k}.tsx").read_text()
+                ts_anchors = set(re.findall(r"^\s{4}(\w+): \{p:", lsrc.split("anchors: {", 1)[1].split("},\n  efek", 1)[0], re.M))
+                assert set(l["anchors"]) == ts_anchors and l["arti"], (k, set(l["anchors"]) ^ ts_anchors)
+            fx_src = (HERE / "src" / "kit3d" / "effects.tsx").read_text()
+            assert set(w["efek"]) == set(re.findall(r"^\s{2}(\w+): \(\{frame", fx_src, re.M)), w["efek"]
     props_src = (HERE / "src" / "kit3d" / "props.tsx").read_text()
+    assert "profesi" in cat and cat["profesi"]["aktif"] is False
     for w in cat.values():
         for p in w["props"]:
             assert re.search(rf"^\s{{2}}{p}:", props_src, re.M), p

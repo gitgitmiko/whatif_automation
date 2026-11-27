@@ -4,6 +4,7 @@ import {Anchor, Lights, Look, Rig, Vignette, clamp} from '../kit3d/core';
 import type {Hero3D} from '../kit3d/person';
 import type {PropSpec} from '../kit3d/props';
 import {kereta} from './kereta';
+import {profesi} from './profesi';
 
 // Every real-time 3D world, by the name the script's "world" uses (and shorts/worlds.json lists).
 export type WorldViewProps = {look: Look; frame: number; shot: string; night: boolean;
@@ -27,7 +28,7 @@ export const sceneProps = (world: string, all: (PropSpec[] | undefined)[]): Prop
   return all.map((own = []) => [...own, ...kept.filter((k) => !own.some((x) => x.di === k.di))]);
 };
 
-export const WORLDS: Record<string, World> = {kereta};
+export const WORLDS: Record<string, World> = {kereta, profesi};
 
 // One scene of a world: the shot's camera over the world's scenery, fading in over the previous scene for `lead` frames.
 export const WorldShot: React.FC<{world: string; shot: string; frames: number; lead: number; night: boolean;
