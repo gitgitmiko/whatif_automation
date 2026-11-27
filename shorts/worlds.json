@@ -1,5 +1,6 @@
 {
   "kereta": {
+    "aktif": true,
     "cocok": "kereta api dan KRL: masinis, asisten masinis, penjaga palang pintu perlintasan, petugas stasiun/peron, kondektur, teknisi rel, kereta barang atau kereta cepat, penumpang KRL jam sibuk",
     "shots": {
       "cab": {"arti": "pandangan masinis dari depan kereta yang melaju di rel menuju perlintasan di kejauhan", "anchors": ["rel", "jalan_kiri", "jalan_kanan"], "tokoh": false},

@@ -152,6 +152,30 @@ console.log(JSON.stringify(bad));"""
     assert json.loads(r.stdout.strip().splitlines()[-1]) == [], r.stdout
 
 
+def test_inactive_world_is_flow():
+    import tempfile
+    import ideas
+    sys.path.insert(0, str(HERE.parent / "pipeline"))
+    import server
+    ideas.ACTIVE = True
+    cat = json.loads((HERE / "worlds.json").read_text())
+    assert cat["kereta"]["aktif"] is True
+    w = ideas.WORLDS["kereta"]
+    w["aktif"] = False
+    try:
+        assert ideas.world_of({"world": "kereta"}) is None
+        assert "- kereta:" not in ideas.research_sys()
+    finally:
+        w["aktif"] = True
+    off = Path(tempfile.mkdtemp()) / "worlds.json"
+    off.write_text(json.dumps({"kereta": {**cat["kereta"], "aktif": False}}))
+    server.STYLE_REMOTION_FROM, server.STYLE_3D_FROM, server.WORLDS_FILE = "2000-01-01", "2000-01-01", off
+    try:
+        assert server.attempts({"world": "kereta"}, "2026-12-01", None) == [["--style", "3d"], []]
+    finally:
+        server.WORLDS_FILE = HERE / "worlds.json"
+
+
 def _clip(src, out):
     import subprocess
     subprocess.run(["ffmpeg", "-v", "error", "-y", *src, "-t", "1", "-r", "30", "-pix_fmt", "yuv420p", str(out)], check=True)

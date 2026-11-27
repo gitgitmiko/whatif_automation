@@ -7,9 +7,11 @@ import {kereta} from './kereta';
 
 // Every real-time 3D world, by the name the script's "world" uses (and shorts/worlds.json lists).
 export type WorldViewProps = {look: Look; frame: number; shot: string; night: boolean;
-  hero?: Hero3D; heroPose?: string; heroExpr?: string; props?: PropSpec[]};
+  hero?: Hero3D; heroPose?: string; heroExpr?: string; props?: PropSpec[]; latar?: string; efek?: string};
+// What a shot may know about its scene besides time: the latar (set) of worlds built from several sets.
+export type ShotCtx = {latar?: string};
 export type World = {
-  shots: Record<string, (t: number, T: number) => Look>;
+  shots: Record<string, (t: number, T: number, ctx: ShotCtx) => Look>;
   View: React.FC<WorldViewProps>;
   overlay?: Record<string, React.FC<{frames: number}>>;
   // named spots where the script may put props in this shot (none: the shot takes no props)
@@ -29,13 +31,13 @@ export const WORLDS: Record<string, World> = {kereta};
 
 // One scene of a world: the shot's camera over the world's scenery, fading in over the previous scene for `lead` frames.
 export const WorldShot: React.FC<{world: string; shot: string; frames: number; lead: number; night: boolean;
-  hero?: Hero3D; heroPose?: string; heroExpr?: string; props?: PropSpec[]}> =
-  ({world, shot, frames, lead, night, hero, heroPose, heroExpr, props}) => {
+  hero?: Hero3D; heroPose?: string; heroExpr?: string; props?: PropSpec[]; latar?: string; efek?: string}> =
+  ({world, shot, frames, lead, night, hero, heroPose, heroExpr, props, latar, efek}) => {
     const frame = useCurrentFrame();
     const {width, height, fps} = useVideoConfig();
     const w = WORLDS[world] ?? WORLDS.kereta;
     const name = w.shots[shot] ? shot : Object.keys(w.shots)[0];
-    const look = w.shots[name](frame / fps, frames / fps);
+    const look = w.shots[name](frame / fps, frames / fps, {latar});
     const dark = night || !!look.night;
     const fade = lead ? interpolate(frame, [0, lead], [0, 1], clamp) : 1;
     const Overlay = w.overlay?.[name];
@@ -45,7 +47,7 @@ export const WorldShot: React.FC<{world: string; shot: string; frames: number; l
           camera={{fov: 50, position: [0, 5, 10]}}>
           <Rig look={look} frame={frame} night={dark} />
           <Lights focus={look.light ?? look.at} night={dark} />
-          <w.View look={look} frame={frame} shot={name} night={dark} hero={hero} heroPose={heroPose} heroExpr={heroExpr} props={props} />
+          <w.View look={look} frame={frame} shot={name} night={dark} hero={hero} heroPose={heroPose} heroExpr={heroExpr} props={props} latar={latar} efek={efek} />
         </ThreeCanvas>
         {Overlay && <Overlay frames={frames} />}
         <Vignette />

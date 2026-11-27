@@ -14,7 +14,7 @@ export type Scene = {
   text: string; visual: Visual; cue?: string; sfx?: string; audio?: string; audioFrom?: number;
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
   shot?: string;  // a real-time 3D shot of props.world instead of a picture
-  hero_pose?: string; hero_expr?: string; props?: PropSpec[];
+  hero_pose?: string; hero_expr?: string; props?: PropSpec[]; latar?: string; efek?: string;
 };
 // narration: one voice track for the whole video (Gemini); without it each scene plays its own audio (edge-tts).
 export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string; series?: string; mode?: string;
@@ -67,7 +67,8 @@ const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, 
       return (
         <Sequence key={`img${i}`} from={s.from - lead} durationInFrames={s.frames + lead + (i < scenes.length - 1 ? 0 : 30)}>
           {world ? <WorldShot world={world} shot={s.shot ?? ''} frames={s.frames + lead} lead={lead} night={mode === 'horor'}
-              hero={hero3d} heroPose={s.hero_pose} heroExpr={s.hero_expr} props={placed[i]} />
+              hero={hero3d} heroPose={s.hero_pose} heroExpr={s.hero_expr} props={placed[i]}
+              latar={s.latar} efek={s.efek} />
             : <ImageScene scene={s} frames={s.frames + lead} lead={lead} />}
         </Sequence>
       );

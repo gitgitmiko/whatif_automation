@@ -159,14 +159,14 @@ _WORLD_RULE = SYS[SYS.index("6. DUNIA 3D YANG TERSEDIA"):SYS.index("\n\nBalas HA
 def research_sys():
     if not ACTIVE:
         return SYS.replace(_WORLD_RULE, "").replace('"world":"nama dunia atau flow",', "")
-    return SYS.replace("{WORLDS}", "\n".join(f"   - {k}: {w['cocok']}" for k, w in WORLDS.items()))
+    return SYS.replace("{WORLDS}", "\n".join(f"   - {k}: {w['cocok']}" for k, w in WORLDS.items() if w.get("aktif")))
 
 
 def world_of(idea):
     """The idea's 3D world when the worlds are active and it names one that exists; None means the old picture
     styles (Flow, then cartoon)."""
     w = (idea or {}).get("world")
-    return w if ACTIVE and w in WORLDS else None
+    return w if ACTIVE and w in WORLDS and WORLDS[w].get("aktif") else None
 
 
 ENDING = ENDING_BY_SLOT["slot1"]   # every slot ends on the loop
