@@ -1,0 +1,23 @@
+{
+  "kereta": {
+    "cocok": "kereta api dan KRL: masinis, asisten masinis, penjaga palang pintu perlintasan, petugas stasiun/peron, kondektur, teknisi rel, kereta barang atau kereta cepat, penumpang KRL jam sibuk",
+    "shots": {
+      "cab": {"arti": "pandangan masinis dari depan kereta yang melaju di rel menuju perlintasan di kejauhan", "anchors": ["rel", "jalan_kiri", "jalan_kanan"], "tokoh": false},
+      "top": {"arti": "tampak atas: kereta terkunci di antara dua rel sambil mengerem, perlintasan di depannya", "anchors": ["rel", "jalan_kiri", "jalan_kanan"], "tokoh": false},
+      "distance": {"arti": "tampak jauh dari samping: seluruh rangkaian mengerem sampai berhenti, angka meter menghitung naik sampai 500 METER (pakai hanya untuk jarak pengereman sekitar 500 meter)", "anchors": [], "tokoh": false},
+      "wheel": {"arti": "close-up roda baja di atas rel, memercikkan api saat mengerem", "anchors": [], "tokoh": false},
+      "crossing": {"arti": "dari jalan raya di perlintasan: palang turun, lampu merah berkedip, lampu kereta mendekat dari jauh", "anchors": ["rel", "jalan_kanan"], "tokoh": false},
+      "stop": {"arti": "moncong kereta berhenti beberapa meter sebelum perlintasan", "anchors": ["rel", "jalan_kanan"], "tokoh": false},
+      "cabin": {"arti": "di dalam kabin: melihat ke luar kaca depan lalu turun ke pedal deadman; kaki terangkat dan lampu alarm merah berkedip", "anchors": [], "tokoh": false},
+      "masinis": {"arti": "close-up kamu di kursi masinis memegang kendali, rel melesat di jendela samping (ekspresi wajah terlihat jelas)", "anchors": [], "tokoh": true},
+      "peron": {"arti": "peron stasiun: kereta masuk dan berhenti, kamu berdiri di tepi peron", "anchors": ["peron_kiri", "peron_kanan"], "tokoh": true},
+      "gerbong": {"arti": "di dalam gerbong KRL yang melaju: kursi panjang merah, pegangan tangan, beberapa penumpang, pemandangan lewat di jendela", "anchors": ["lantai", "kursi"], "tokoh": false},
+      "night": {"arti": "kereta melaju di malam hari, lampu menyala (cocok untuk penutup loop atau suasana malam)", "anchors": [], "tokoh": false}
+    },
+    "catatan": "Benda yang ditaruh di anchor \"rel\" tetap ada di perlintasan sepanjang video (misalnya mobil mogok). Tanpa benda di \"rel\", perlintasannya kosong.",
+    "props": ["mobil", "motor", "truk", "orang", "kotak", "tabung_gas", "pohon", "rumah", "lampu_peringatan", "tiang", "panel_layar", "kerucut_lalu_lintas", "sapi", "gerobak", "koper"],
+    "poses": ["berdiri", "duduk", "lari", "menunjuk", "panik", "memegang", "menoleh"],
+    "exprs": ["biasa", "kaget", "takut", "lega", "fokus"],
+    "topi": ["none", "masinis", "helm", "pet", "perawat"]
+  }
+}

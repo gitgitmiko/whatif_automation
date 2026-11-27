@@ -6,16 +6,19 @@ import {Captions} from './Captions';
 import {Stars, VISUALS, Visual, Word, cueFrame} from './visuals';
 import {Hero, HeroContext, Pov, PovOutro, THEMES} from './hero';
 import {HOOK_FRAMES, HookCard, ImageScene, Label, TopTag, XFADE} from './scene3d';
-import {WorldShot} from './worlds';
+import {WorldShot, sceneProps} from './worlds';
+import type {Hero3D} from './kit3d/person';
+import type {PropSpec} from './kit3d/props';
 
 export type Scene = {
   text: string; visual: Visual; cue?: string; sfx?: string; audio?: string; audioFrom?: number;
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
   shot?: string;  // a real-time 3D shot of props.world instead of a picture
+  hero_pose?: string; hero_expr?: string; props?: PropSpec[];
 };
 // narration: one voice track for the whole video (Gemini); without it each scene plays its own audio (edge-tts).
 export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string; series?: string; mode?: string;
-  world?: string};  // set: every scene is a shot of this real-time 3D world (src/worlds)
+  world?: string; hero3d?: Hero3D};  // set: every scene is a shot of this real-time 3D world (src/worlds)
 
 const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
@@ -54,14 +57,17 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, mode, world}) => (
+const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, mode, world, hero3d}) => {
+  const placed = world ? sceneProps(world, scenes.map((s) => s.props)) : [];
+  return (
   <AbsoluteFill style={{background: '#000'}}>
     {narration && <Audio src={staticFile(narration)} />}
     {scenes.map((s, i) => {
       const lead = i ? XFADE : 0;  // each picture dissolves in over the end of the one before
       return (
         <Sequence key={`img${i}`} from={s.from - lead} durationInFrames={s.frames + lead + (i < scenes.length - 1 ? 0 : 30)}>
-          {world ? <WorldShot world={world} shot={s.shot ?? ''} frames={s.frames + lead} lead={lead} night={mode === 'horor'} />
+          {world ? <WorldShot world={world} shot={s.shot ?? ''} frames={s.frames + lead} lead={lead} night={mode === 'horor'}
+              hero={hero3d} heroPose={s.hero_pose} heroExpr={s.hero_expr} props={placed[i]} />
             : <ImageScene scene={s} frames={s.frames + lead} lead={lead} />}
         </Sequence>
       );
@@ -82,7 +88,8 @@ const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, 
     <TopTag title={title} from={hook ? HOOK_FRAMES : 0} series={series} horror={mode === 'horor'} />
     <HookCard text={hook ?? ''} />
   </AbsoluteFill>
-);
+  );
+};
 
 export const Short: React.FC<ShortProps> = (props) => {
   const {title, scenes, frames, hero, theme} = props;
