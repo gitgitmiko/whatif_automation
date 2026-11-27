@@ -14,7 +14,7 @@ def test_catalog_matches_ts():
     cat = json.loads((HERE / "worlds.json").read_text())
     for name, w in cat.items():
         src = (HERE / "src" / "worlds" / f"{name}.tsx").read_text()
-        ts = set(re.findall(r"^\s{2}(\w+): \(t", src.split("export const shots", 1)[1], re.M))
+        ts = set(re.findall(r"^\s{2}(\w+): (?:\(t|own\()", src.split("export const shots", 1)[1].split("\n};", 1)[0], re.M))
         assert set(w["shots"]) == ts, (name, set(w["shots"]) ^ ts)
         for s in w["shots"].values():
             assert s["arti"] and isinstance(s["anchors"], list) and isinstance(s["tokoh"], bool)

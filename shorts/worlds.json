@@ -123,7 +123,7 @@
   },
   "profesi": {
     "aktif": false,
-    "cocok": "profesi sehari-hari dan pekerja lapangan yang latarnya tersedia: penjual gorengan/makanan kaki lima, chef, pedagang warung (latar dapur); montir, tukang tambal ban, mekanik motor (latar bengkel)",
+    "cocok": "hampir semua profesi POV yang latarnya tersedia: pedagang makanan/chef (dapur), montir (bengkel), ojol/kurir/tukang parkir/petugas lalu lintas (jalan), dokter/perawat IGD (rumah_sakit), operator CCTV/ATC/bendungan/listrik (kantor), teknisi data center (server), teknisi tower/PLN (ketinggian), pekerja anjungan/ABK (laut), pilot (kokpit)",
     "latar": {
       "dapur": {
         "arti": "warung gorengan kaki lima di pinggir jalan saat senja: meja gerobak, kompor gas dengan wajan minyak panas, etalase gorengan, tabung gas 3 kg di samping, tenda oranye dengan lampu kecil, bangku pembeli, jalan raya di depan",
@@ -141,6 +141,57 @@
           "lantai_kanan",
           "rak",
           "depan"
+        ]
+      },
+      "jalan": {
+        "arti": "jalan raya kota saat senja: 4 lajur dengan zebra cross, trotoar, ruko, lampu lalu lintas, mobil-motor-truk melintas; kamu di trotoar dekat motormu",
+        "anchors": [
+          "trotoar_kiri",
+          "trotoar_kanan",
+          "jalan_dekat",
+          "jalan_jauh"
+        ]
+      },
+      "rumah_sakit": {
+        "arti": "bilik IGD: ranjang dengan pasien, monitor jantung dengan garis detak, tiang infus, troli darurat merah, tirai; kamu berdiri di samping ranjang",
+        "anchors": [
+          "lantai_kiri",
+          "lantai_kanan",
+          "meja"
+        ]
+      },
+      "kantor": {
+        "arti": "ruang kontrol (CCTV, menara ATC, bendungan, listrik): dinding layar di belakangmu, meja dengan monitor, telepon merah, lampu peringatan; kamu duduk di kursi",
+        "anchors": [
+          "meja",
+          "lantai_kiri",
+          "lantai_kanan"
+        ]
+      },
+      "server": {
+        "arti": "lorong ruang server / data center: dua baris rak hitam penuh lampu berkedip, lantai panel, cahaya biru dingin; kamu berdiri di lorong",
+        "anchors": [
+          "lorong_depan",
+          "lorong_belakang"
+        ]
+      },
+      "ketinggian": {
+        "arti": "platform di tower telekomunikasi setinggi 40 meter: rangka baja, pagar kuning, kotak antena, lampu merah di puncak, kota jauh di bawah; kamu terikat tali pengaman",
+        "anchors": [
+          "platform"
+        ]
+      },
+      "laut": {
+        "arti": "dek anjungan lepas pantai 15 meter di atas ombak: pipa dengan katup roda merah, tangki, derek, menara suar api (flare), kapal suplai; kamu di depan katup",
+        "anchors": [
+          "dek_kiri",
+          "dek_kanan"
+        ]
+      },
+      "kokpit": {
+        "arti": "kokpit pesawat penumpang di atas awan: kaca depan, layar-layar menyala, kemudi, tuas gas, lampu peringatan merah, kopilot di sebelah; kamu duduk di kursi kapten",
+        "anchors": [
+          "kursi_kanan"
         ]
       }
     },
@@ -171,7 +222,7 @@
         "tokoh": true
       },
       "bahaya": {
-        "arti": "momen bahaya: kamera goyang, efek menyala di benda kerja (bawaan: api di warung, asap di bengkel), kamu panik",
+        "arti": "momen bahaya: kamera goyang, efek menyala di benda kerja (bawaan per latar), kamu panik",
         "anchors": [],
         "tokoh": true
       },

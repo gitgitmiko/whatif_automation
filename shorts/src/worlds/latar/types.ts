@@ -5,10 +5,12 @@ import type {Anchor, V3} from '../../kit3d/core';
 // the effect the "bahaya" shot switches on, and the prop shown on the explainer stage when the scene names none.
 export type Latar = {
   Scenery: React.FC<{frame: number; night: boolean}>;
-  hero: {p: V3; ry: number; pose: string};
+  hero: {p: V3; ry: number; pose: string; eye?: number};  // eye: eye height above p (1.52 standing, ~1.22 seated)
   work: V3;
   wide: {cam: V3; at: V3};
   anchors: Record<string, Anchor>;
   efek: string;
   signature: string;
+  sky?: string;  // its own sky colour (above the clouds); default dusk
+  cams?: Record<string, {cam: V3; at: V3}>;  // hand-placed cameras for shots the rule gets wrong in this set
 };
