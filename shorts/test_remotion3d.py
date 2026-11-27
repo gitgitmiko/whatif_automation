@@ -204,6 +204,27 @@ def test_tidy_remotion_latar():
     assert '"latar"' in w and "   - dapur: warung gorengan" in w and "efek" in w and "   - bengkel:" in c
 
 
+def test_scene_can_cut_to_tubuh():
+    import produce
+    s = {"world": "profesi", "title": "T", "hero": {},
+         "scenes": [{"text": "Satu dua.", "shot": "lebar", "latar": "dapur"},
+                    {"text": "Paru-parumu terisi asap.", "world": "tubuh", "shot": "paru", "latar": "dapur", "props": [{"jenis": "kompor", "di": "meja"}]},
+                    {"text": "Jantung berdebar.", "world": "tubuh", "shot": "terbang"},
+                    {"text": "Kembali ke warung.", "world": "bulan", "shot": "wajah"}]}
+    t = produce.tidy_remotion(s)
+    sc = t["scenes"]
+    assert sc[1]["world"] == "tubuh" and sc[1]["shot"] == "paru" and sc[1].get("props") == [] and "latar" not in sc[1]
+    assert sc[2]["world"] == "tubuh" and sc[2]["shot"] in produce.WORLDS["tubuh"]["shots"]
+    assert "world" not in sc[3] and sc[3]["shot"] == "wajah" and sc[3]["latar"] == "dapur"
+    assert '"world":"tubuh"' not in produce.prompts_remotion("profesi", "loop", "fakta")[0]  # inactive: not offered
+    produce.WORLDS["tubuh"]["aktif"] = True
+    try:
+        w, _ = produce.prompts_remotion("profesi", "loop", "fakta")
+        assert "   - jantung: jantung berdetak" in w and '"world":"tubuh"' in w
+    finally:
+        produce.WORLDS["tubuh"]["aktif"] = False
+
+
 def _clip(src, out):
     import subprocess
     subprocess.run(["ffmpeg", "-v", "error", "-y", *src, "-t", "1", "-r", "30", "-pix_fmt", "yuv420p", str(out)], check=True)

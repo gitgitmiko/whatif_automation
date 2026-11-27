@@ -240,5 +240,71 @@
       "pet",
       "perawat"
     ]
+  },
+  "tubuh": {
+    "aktif": false,
+    "cocok": "adegan penjelasan tentang tubuh manusia: apa yang terjadi pada jantung, paru-paru, lambung, ginjal, otak, atau aliran darah (misalnya dokter IGD, perawat, atlet, penyelam, pilot saat tekanan tinggi); biasanya dipakai sebagian adegan saja, dunia lain tetap untuk adegan cerita",
+    "shots": {
+      "siluet": {
+        "arti": "tubuh manusia tembus pandang dengan organ-organ menyala di tempatnya; kamera turun dari kepala ke perut",
+        "anchors": [],
+        "tokoh": false
+      },
+      "otak": {
+        "arti": "otak dengan percikan sinyal saraf biru yang berkedip",
+        "anchors": [],
+        "tokoh": false
+      },
+      "jantung": {
+        "arti": "jantung berdetak, darah mengalir di lengkung aorta",
+        "anchors": [],
+        "tokoh": false
+      },
+      "paru": {
+        "arti": "dua paru-paru mengembang dan mengempis, udara masuk lewat tenggorokan",
+        "anchors": [],
+        "tokoh": false
+      },
+      "lambung": {
+        "arti": "lambung tembus pandang berisi asam kuning-hijau yang bergolak",
+        "anchors": [],
+        "tokoh": false
+      },
+      "ginjal": {
+        "arti": "dua ginjal dengan pembuluh darah, saluran kemih, kandung kemih, dan batu kecil yang meluncur turun",
+        "anchors": [],
+        "tokoh": false
+      },
+      "pembuluh": {
+        "arti": "terbang di dalam pembuluh darah, sel darah merah melesat melewati kamera",
+        "anchors": [],
+        "tokoh": false
+      }
+    },
+    "catatan": "Dunia ini tanpa tokoh dan tanpa benda; label angka tetap bisa dipakai.",
+    "props": [],
+    "poses": [
+      "berdiri",
+      "duduk",
+      "lari",
+      "menunjuk",
+      "panik",
+      "memegang",
+      "menoleh"
+    ],
+    "exprs": [
+      "biasa",
+      "kaget",
+      "takut",
+      "lega",
+      "fokus"
+    ],
+    "topi": [
+      "none",
+      "masinis",
+      "helm",
+      "pet",
+      "perawat"
+    ]
   }
 }

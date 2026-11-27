@@ -188,6 +188,9 @@ def prompts_remotion(world, ending, mode="fakta"):
         rules += ('\n   Dunia ini punya beberapa LATAR: tiap adegan WAJIB punya "latar" (nama dari daftar latar, pilih yang sesuai '
                   'tempat kejadian kalimatnya; boleh berganti antar adegan) dan boleh punya "efek" (salah satu efek di daftar, menyala '
                   'di benda kerja; shot "bahaya" tanpa efek memakai efek bawaan latar).')
+    for inset in sorted(i for i in INSETS if i != world and WORLDS[i].get("aktif")):  # live insets only
+        rules += (f'\n   Untuk menjelaskan sesuatu, satu adegan boleh pindah sebentar ke dunia "{inset}": tulis "world":"{inset}" di adegan '
+                  f'itu dan pilih shot dari dunia {inset} (tanpa latar, benda, atau pose).\n' + world_menu(inset))
     extra = '"latar":"...","efek":"",' if WORLDS[world].get("latar") else ""
     writer = writer.replace(_RULES_3D_TEXT, rules).replace(_JSON_3D, """ "seri":"NIGHT SHIFT",
  "world":"%s",
@@ -205,6 +208,26 @@ def prompts_remotion(world, ending, mode="fakta"):
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
+# Worlds a scene of any other world may cut to for one shot (no sets, props or hero of their own).
+INSETS = {k for k, v in WORLDS.items() if not v.get("latar") and not v["props"]}
+
+
+def _tidy_common(x):
+    """Fields every 3D scene shares: a short label, a cue word that is really spoken, a known sfx and emotion."""
+    if not x.get("label") or len(str(x["label"])) > 14:
+        x.pop("label", None)
+    spoken = [t.lower().strip(".,?!;:") for t in x["text"].split()]
+    cue = str(x.get("cue") or "").lower().strip(".,?!;:")
+    if cue and not any(t.startswith(cue) for t in spoken):
+        x.pop("cue", None)
+    if x.get("sfx") not in SFX:
+        x.pop("sfx", None)
+    if x.get("emosi") not in EMOSI:
+        x["emosi"] = "tegang"
+    for k in ("image", "camera", "visual"):
+        x.pop(k, None)
+
+
 def tidy_remotion(s):
     """A script for a 3D world, repaired to what the world really has: unknown shots, poses, props and hats are
     replaced or dropped so the render never meets a name it does not know."""
@@ -217,6 +240,16 @@ def tidy_remotion(s):
     names = list(w["shots"])
     prev, place = None, None
     for i, x in enumerate(scenes):
+        inset = x.get("world")
+        if inset in INSETS and inset != s["world"]:  # a cut to a shared world (inside the body) for one scene
+            x["shot"] = x.get("shot") if x.get("shot") in WORLDS[inset]["shots"] else next(iter(WORLDS[inset]["shots"]))
+            x["props"] = []
+            for k in ("latar", "efek", "hero_pose", "hero_expr"):
+                x.pop(k, None)
+            prev = None
+            _tidy_common(x)
+            continue
+        x.pop("world", None)
         if w.get("latar"):  # a world of sets: a missing or unknown latar continues the previous one
             place = x["latar"] = x.get("latar") if x.get("latar") in w["latar"] else place or next(iter(w["latar"]))
             if x.get("efek") not in w.get("efek", []):
@@ -234,18 +267,7 @@ def tidy_remotion(s):
         else:
             props = [p for p in x.get("props") or [] if isinstance(p, dict) and p.get("jenis") in w["props"] and p.get("di") in anchors]
             x["props"] = [{"jenis": p["jenis"], "di": p["di"]} for p in props][:3]
-        if not x.get("label") or len(str(x["label"])) > 14:
-            x.pop("label", None)
-        spoken = [t.lower().strip(".,?!;:") for t in x["text"].split()]
-        cue = str(x.get("cue") or "").lower().strip(".,?!;:")
-        if cue and not any(t.startswith(cue) for t in spoken):
-            x.pop("cue", None)
-        if x.get("sfx") not in SFX:
-            x.pop("sfx", None)
-        if x.get("emosi") not in EMOSI:
-            x["emosi"] = "tegang"
-        for k in ("image", "camera", "visual"):
-            x.pop(k, None)
+        _tidy_common(x)
     hero = s.get("hero") if isinstance(s.get("hero"), dict) else {}
     s["hero"] = {"topi": hero.get("topi") if hero.get("topi") in w["topi"] else "none"}
     if HEX.match(str(hero.get("seragam") or "")):

@@ -8,7 +8,7 @@ import {useThree} from '@react-three/fiber';
 
 export type V3 = [number, number, number];
 // What a shot decides for one frame. cam/at/fov/night/shake/light belong to the kit; anything else is the world's own.
-export type Look = {cam: V3; at: V3; fov?: number; night?: boolean; shake?: number; light?: V3; [k: string]: unknown};
+export type Look = {cam: V3; at: V3; fov?: number; night?: boolean; shake?: number; light?: V3; sky?: string; [k: string]: unknown};
 // A named spot in a shot where a prop or a person may stand (the AI never gives coordinates).
 export type Anchor = {p: V3; ry?: number; s?: number};
 
@@ -56,8 +56,9 @@ export const Rig: React.FC<{look: Look; frame: number; night: boolean}> = ({look
   cam.near = 0.1;
   cam.far = 2000;
   cam.updateProjectionMatrix();
-  scene.background = new THREE.Color(night ? '#0b1024' : '#f0a25a');
-  scene.fog = new THREE.Fog(night ? '#0b1024' : '#f3b77a', 60, night ? 380 : 650);
+  // a world may paint its own sky (inside the body); otherwise dusk, or night
+  scene.background = new THREE.Color(look.sky ?? (night ? '#0b1024' : '#f0a25a'));
+  scene.fog = new THREE.Fog(look.sky ?? (night ? '#0b1024' : '#f3b77a'), 60, night ? 380 : 650);
   return null;
 };
 
