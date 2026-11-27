@@ -6,13 +6,16 @@ import {Captions} from './Captions';
 import {Stars, VISUALS, Visual, Word, cueFrame} from './visuals';
 import {Hero, HeroContext, Pov, PovOutro, THEMES} from './hero';
 import {HOOK_FRAMES, HookCard, ImageScene, Label, TopTag, XFADE} from './scene3d';
+import {WorldShot} from './worlds';
 
 export type Scene = {
   text: string; visual: Visual; cue?: string; sfx?: string; audio?: string; audioFrom?: number;
   from: number; frames: number; words: Word[]; image?: string; camera?: string; label?: string;
+  shot?: string;  // a real-time 3D shot of props.world instead of a picture
 };
 // narration: one voice track for the whole video (Gemini); without it each scene plays its own audio (edge-tts).
-export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string; series?: string; mode?: string};
+export type ShortProps = {title: string; hook?: string; fps: number; frames: number; scenes: Scene[]; hero?: Hero; theme?: string; style?: string; narration?: string; series?: string; mode?: string;
+  world?: string};  // set: every scene is a shot of this real-time 3D world (src/worlds)
 
 const SceneView: React.FC<{scene: Scene; pov: boolean}> = ({scene, pov}) => {
   const frame = useCurrentFrame();
@@ -51,14 +54,15 @@ const Header: React.FC<{title: string; total: number}> = ({title, total}) => {
   );
 };
 
-const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, mode}) => (
+const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, mode, world}) => (
   <AbsoluteFill style={{background: '#000'}}>
     {narration && <Audio src={staticFile(narration)} />}
     {scenes.map((s, i) => {
       const lead = i ? XFADE : 0;  // each picture dissolves in over the end of the one before
       return (
         <Sequence key={`img${i}`} from={s.from - lead} durationInFrames={s.frames + lead + (i < scenes.length - 1 ? 0 : 30)}>
-          <ImageScene scene={s} frames={s.frames + lead} lead={lead} />
+          {world ? <WorldShot world={world} shot={s.shot ?? ''} frames={s.frames + lead} lead={lead} night={mode === 'horor'} />
+            : <ImageScene scene={s} frames={s.frames + lead} lead={lead} />}
         </Sequence>
       );
     })}
@@ -82,7 +86,7 @@ const Short3D: React.FC<ShortProps> = ({title, hook, scenes, narration, series, 
 
 export const Short: React.FC<ShortProps> = (props) => {
   const {title, scenes, frames, hero, theme} = props;
-  if (props.style === '3d') return <Short3D {...props} />;
+  if (props.style === '3d' || props.world) return <Short3D {...props} />;
   const pov = Boolean(hero?.emoji);
   return (
     <HeroContext.Provider value={hero ?? {}}>
