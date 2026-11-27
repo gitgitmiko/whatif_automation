@@ -150,7 +150,11 @@ CHECK_3D = CHECK_SYS[:CHECK_SYS.index("kira-kira separuh adegan visual pov")] + 
 
 
 # Real-time 3D worlds (shorts/src/worlds) and what the writer may use in each: shots, anchors, props, poses, hats.
-WORLDS = load(HERE / "worlds.json")
+try:
+    WORLDS = load(HERE / "worlds.json")
+except Exception as e:  # noqa: BLE001 - a broken catalog must not stop the Flow and cartoon styles
+    log("worlds.json unreadable, no 3D worlds:", e)
+    WORLDS = {}
 
 
 def world_menu(world):

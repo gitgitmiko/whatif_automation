@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
-from common import ROOT, RUNS, load, log, save
+from common import ROOT, RUNS, STYLE_REMOTION_FROM, load, log, save
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
@@ -31,9 +31,9 @@ SLOTS = {"slot1": ("01:00", "10:00"), "slot2": ("02:30", "12:00"), "slot3": ("04
 IDEAS_AT = "19:00"  # shorts/ideas.py researches, drafts and judges TOMORROW's 5 Shorts (Sonnet writes, Opus judges)
 IDEAS = ROOT / "data" / "ideas"
 STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
-STYLE_REMOTION_FROM = "2099-01-01"  # from this day an idea with a 3D world is rendered in it first (shorts/src/worlds)
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
 SHORTS = ROOT / "shorts"
+WORLDS_FILE = SHORTS / "worlds.json"
 PYTHON = ROOT / ".venv" / "bin" / "python"
 KEEP_DAYS = 7
 PIPE = ROOT / "pipeline"
@@ -90,11 +90,16 @@ def mark_rendered(rid, d, s):
 def attempts(idea, today, research_script):
     """The produce.py arguments to try in order, each a fallback for the one before: the idea's real-time 3D world,
     then Flow 3D pictures, then the cartoon style. The evening's script goes only to the style it was written for."""
-    worlds = load(SHORTS / "worlds.json")
     world = (idea or {}).get("world")
     styled = load(research_script).get("style") if research_script else None
     out = []
-    if today >= STYLE_REMOTION_FROM and world in worlds:
+    worlds = {}
+    if today >= STYLE_REMOTION_FROM:
+        try:
+            worlds = load(WORLDS_FILE)
+        except Exception as e:  # a broken catalog costs the 3D world, never the slot
+            log("worlds.json unreadable, no 3D world:", e)
+    if world in worlds:
         out.append(["--style", "remotion3d", "--world", world] + (["--script", research_script] if styled == "remotion3d" else []))
     if today >= STYLE_3D_FROM:
         out.append(["--style", "3d"] + (["--script", research_script] if research_script and styled != "remotion3d" else []))

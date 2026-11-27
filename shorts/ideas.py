@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
-from common import load, log, save  # noqa: E402
+from common import STYLE_REMOTION_FROM, load, log, save  # noqa: E402
 from peran import ask_json, asker  # noqa: E402
 from produce import ENDING_BY_SLOT, SERIES, WORLDS, brief_for, check_draft, write_draft  # noqa: E402
 
@@ -150,13 +150,23 @@ def own_performance():
 
 
 SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
-SYS = SYS.replace("{WORLDS}", "\n".join(f"   - {k}: {w['cocok']}" for k, w in WORLDS.items()))
+# The 3D worlds count only once tomorrow (the day being researched) is on or after STYLE_REMOTION_FROM; before that
+# the research, drafts and judging stay exactly as they were.
+ACTIVE = (dt.date.today() + dt.timedelta(days=1)).isoformat() >= STYLE_REMOTION_FROM
+_WORLD_RULE = SYS[SYS.index("6. DUNIA 3D YANG TERSEDIA"):SYS.index("\n\nBalas HANYA JSON:") + 1]
+
+
+def research_sys():
+    if not ACTIVE:
+        return SYS.replace(_WORLD_RULE, "").replace('"world":"nama dunia atau flow",', "")
+    return SYS.replace("{WORLDS}", "\n".join(f"   - {k}: {w['cocok']}" for k, w in WORLDS.items()))
 
 
 def world_of(idea):
-    """The idea's 3D world when it names one that exists; None means the old picture styles (Flow, then cartoon)."""
+    """The idea's 3D world when the worlds are active and it names one that exists; None means the old picture
+    styles (Flow, then cartoon)."""
     w = (idea or {}).get("world")
-    return w if w in WORLDS else None
+    return w if ACTIVE and w in WORLDS else None
 
 
 ENDING = ENDING_BY_SLOT["slot1"]   # every slot ends on the loop
@@ -225,7 +235,7 @@ def main(day=None):
     if own:
         brief["performa_channel_sendiri"] = own
         log(f"own analytics: {len(own['terbaik'])} best, {len(own['terlemah'])} weakest")
-    out, who = ask_json("riset", SYS, json.dumps(brief, ensure_ascii=False), web=True)
+    out, who = ask_json("riset", research_sys(), json.dumps(brief, ensure_ascii=False), web=True)
     log(f"riset oleh {who}")
     ideas = [i for i in out.get("ideas", []) if i.get("topic")]
     if not ideas:

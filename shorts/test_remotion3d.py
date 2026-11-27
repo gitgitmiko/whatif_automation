@@ -7,7 +7,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-WS = HERE.parent / ".superpowers" / "sdd" / "2026-11-27-remotion-3d-fase1-kereta" / "t4"  # stills rendered in Task 4
+DATA = HERE / "test_data"  # a real day still and a real horror-night still of the kereta world
 
 
 def test_catalog_matches_ts():
@@ -83,16 +83,27 @@ def test_props_from_remotion():
 
 def test_world_of():
     import ideas
+    ideas.ACTIVE = True
     assert ideas.world_of({"world": "kereta"}) == "kereta"
     assert ideas.world_of({"world": "flow"}) is None
     assert ideas.world_of({"world": "bulan"}) is None
     assert ideas.world_of({}) is None
 
 
+def test_world_of_off_before_activation():
+    import ideas
+    ideas.ACTIVE = False
+    try:
+        assert ideas.world_of({"world": "kereta"}) is None
+        assert "DUNIA 3D YANG TERSEDIA" not in ideas.research_sys()
+    finally:
+        ideas.ACTIVE = True
+
+
 def test_ideas_prompt_lists_worlds():
     import ideas
-    assert "DUNIA 3D YANG TERSEDIA" in ideas.SYS and "- kereta: kereta api dan KRL" in ideas.SYS
-    assert '"world":' in ideas.SYS
+    ideas.ACTIVE = True
+    assert "- kereta: kereta api dan KRL" in ideas.research_sys() and '"world":' in ideas.research_sys()
 
 
 def test_server_attempts():
@@ -111,8 +122,33 @@ def test_server_attempts():
     assert server.attempts(None, "2026-12-01", None) == [["--style", "3d"], []]
     server.STYLE_REMOTION_FROM = "2099-01-01"
     assert server.attempts({"world": "kereta"}, "2026-12-01", s3d)[0] == ["--style", "3d", "--script", s3d]
+    server.STYLE_REMOTION_FROM = "2000-01-01"
+    bad = tmp / "broken.json"
+    bad.write_text("{not json")
+    server.WORLDS_FILE = bad  # a broken catalog costs the 3D world, never the slot
+    assert server.attempts({"world": "kereta"}, "2026-12-01", None) == [["--style", "3d"], []]
+    server.WORLDS_FILE = HERE / "worlds.json"
     server.STYLE_3D_FROM = "2099-01-01"
+    server.STYLE_REMOTION_FROM = "2099-01-01"
     assert server.attempts(None, "2026-12-01", None) == [[]]
+
+
+def test_shots_never_reach_the_crossing():
+    """Whatever stands on the rails (the sticky "rel" prop at x = 0) is never driven through, for any scene length,
+    including the 8-frame lead and the 30 frames the last scene plays past its end."""
+    import subprocess
+    out = subprocess.run(["npx", "esbuild", "src/worlds/kereta.tsx", "--bundle", "--platform=node", "--format=cjs",
+                          "--log-level=error", "--outfile=/dev/stdout", "--jsx=automatic"], cwd=HERE, capture_output=True, text=True, check=True).stdout
+    js = out + """
+const SH = module.exports.shots; const bad = [];
+for (const [n, f] of Object.entries(SH)) { if (n === 'peron') continue;  // the station lies beyond the crossing
+  for (const T of [3, 4, 6, 8]) for (let t = 0; t <= T + 1.3; t += 0.05) if (f(t, T).front > -3) { bad.push(n + '@' + T); break; } }
+console.log(JSON.stringify(bad));"""
+    import tempfile
+    f = Path(tempfile.mkdtemp()) / "shots.cjs"
+    f.write_text(js)
+    r = subprocess.run(["node", str(f)], cwd=HERE, capture_output=True, text=True, check=True)
+    assert json.loads(r.stdout.strip().splitlines()[-1]) == [], r.stdout
 
 
 def _clip(src, out):
@@ -124,8 +160,10 @@ def _clip(src, out):
 def test_frame_check():
     import produce
     one = [{"from": 0, "frames": 30}]
-    day = _clip(["-loop", "1", "-i", str(WS / "day.png")], WS / "c_day.mp4")
-    night = _clip(["-loop", "1", "-i", str(WS / "night.png")], WS / "c_night.mp4")
+    import tempfile
+    WS = Path(tempfile.mkdtemp())
+    day = _clip(["-loop", "1", "-i", str(DATA / "day.png")], WS / "c_day.mp4")
+    night = _clip(["-loop", "1", "-i", str(DATA / "night.png")], WS / "c_night.mp4")
     black = _clip(["-f", "lavfi", "-i", "color=black:s=270x480"], WS / "c_black.mp4")
     flat = _clip(["-f", "lavfi", "-i", "color=0x6d8f3f:s=270x480"], WS / "c_flat.mp4")
     assert produce.frame_check(day, one) == [], produce.frame_check(day, one)

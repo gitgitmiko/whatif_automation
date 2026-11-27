@@ -17,7 +17,7 @@ export const shots: Record<string, (t: number, T: number) => KLook> = {
   cab: (t: number, T: number): KLook => {
     const u = Math.min(t / T, 1);
     // driver's view down the line, the stalled car growing ahead
-    const front = -170 + 26 * t;
+    const front = brake(-170, 155, t, T * 1.3 + 1.5);  // eases in so even a long scene stops short of the crossing
     return {light: [front, 0, 0], front, braking: 0, cam: [front + 1.2, 3.6, -0.5], at: [front + 80, 1.8, 0.3], fov: 60, shake: 0.05, gate: 1};
   },
   top: (t: number, T: number): KLook => {
@@ -63,7 +63,7 @@ export const shots: Record<string, (t: number, T: number) => KLook> = {
   night: (t: number, T: number): KLook => {
     const u = Math.min(t / T, 1);
     // the loop: the same train rushing into the next night
-    const front = -260 + 30 * t;
+    const front = brake(-260, 250, t, T * 1.3 + 1.5);
     return {light: [front, 0, 0], front, braking: 0, cam: [front + 14 - 6 * u, 5 + 2 * u, 12 - 4 * u], at: [front - 8, 2.5, 0], fov: 60, night: true, gate: 0};
   },
   masinis: (t: number, T: number): KLook => {
