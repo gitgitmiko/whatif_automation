@@ -21,7 +21,7 @@
       },
       {
        "field": "cronExpression",
-       "expression": "30 10 * * *"
+       "expression": "0 12 * * *"
       },
       {
        "field": "cronExpression",
@@ -29,15 +29,11 @@
       },
       {
        "field": "cronExpression",
-       "expression": "30 15 * * *"
+       "expression": "0 18 * * *"
       },
       {
        "field": "cronExpression",
        "expression": "0 20 * * *"
-      },
-      {
-       "field": "cronExpression",
-       "expression": "30 20 * * *"
       }
      ]
     }
@@ -64,7 +60,7 @@
     100
    ],
    "parameters": {
-    "jsCode": "// 10:00 uploads the 'pagi' Short, 15:00 'sore', 20:00 'malam'; the :30 run is a retry (it finds nothing if :00 worked).\n// Change privacy to 'unlisted' or 'private' to review videos before they go public.\nconst hour = $now.setZone('Asia/Jakarta').hour;\nreturn [{ json: { slot: hour < 13 ? 'pagi' : hour < 18 ? 'sore' : 'malam', privacy: 'public' } }];"
+    "jsCode": "// 10:00, 12:00, 15:00, 18:00, 20:00 uploads slot1 to slot5\n// Change privacy to 'unlisted' or 'private' to review videos before they go public.\nconst hour = $now.setZone('Asia/Jakarta').hour;\nconst slot = hour < 11 ? 'slot1' : hour < 13 ? 'slot2' : hour < 16 ? 'slot3' : hour < 19 ? 'slot4' : 'slot5';\nreturn [{ json: { slot, privacy: 'public' } }];"
    }
   },
   {

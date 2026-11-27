@@ -10,7 +10,7 @@
 
   .venv/bin/python shorts/produce.py <id> [--script file.json] [--topic "mesin ATM"] [--idea ideas.json slot] [--style 3d]
       --script skips naskah and cek; --topic fixes what "kamu" becomes instead of letting the writer pick;
-      --mode fakta|horor overrides the slot's mode (malam = horor); --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
+      --mode fakta|horor overrides the slot's mode (slot5 = horor); --idea writes the slot's idea from the 06:00 research (shorts/ideas.py); --style 3d draws each scene as a Flow
       3D render moved by the camera (src/scene3d.tsx) instead of the cartoon hero
 """
 import asyncio, json, re, shutil, sqlite3, subprocess, sys, urllib.parse, urllib.request
@@ -55,7 +55,7 @@ SERIES = {
 }
 # fakta: a true moment explained with checked facts. horor: original horror fiction set in a real job whose
 # procedures and tools are true. The night slot is horror; the others stay factual.
-MODE_BY_SLOT = {"pagi": "fakta", "sore": "fakta", "malam": "horor"}
+MODE_BY_SLOT = {"slot1": "fakta", "slot2": "fakta", "slot3": "fakta", "slot4": "fakta", "slot5": "horor"}  # slot5 = 20:00
 
 LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF BESAR otomatis, buat SINGKAT):
 - {"type":"pov","mood":"happy|shock|tired|angry|sad|dizzy|love|smug|scared|proud","say":"...","motion":"idle|shake|jump|spin|shiver|tilt","props":["🧍","💳"],"props_motion":"around|rain|queue|burst|in|hit","stamp":"..."}  SANG TOKOH (benda yang kamu perankan, dari field "hero") digambar besar dengan wajah dan ekspresi mood. say = isi hati/ucapan tokoh di gelembung bicara, maks 5 kata, lucu, BUKAN pengulangan narasi (boleh kosong). motion terjadi di kata cue (shake = terguncang, jump = melompat kaget, spin = berputar, shiver = gemetar terus, tilt = miring lesu). props = 0-4 emoji: around = mengelilingi, queue = antre di depan, rain = berjatuhan dari atas, burst = menyembur keluar dari tokoh di kata cue (uang keluar dari ATM), in = melesat masuk ke tokoh di kata cue (kartu masuk, koin dimasukkan), hit = menghantam tokoh dari samping tepat di kata cue (tendangan, linggis, bola). Pilih props dan motion yang MEMPERAGAKAN kalimatnya, bukan hiasan.
@@ -160,7 +160,7 @@ ENDINGS = {
              'kalimat terakhir menggantung dan menyambung mulus ke kalimat pertama (loop); semua fakta penting sudah '
              'disampaikan sebelumnya'),
 }
-ENDING_BY_SLOT = {"pagi": "loop", "sore": "loop", "malam": "loop"}
+ENDING_BY_SLOT = {s: "loop" for s in MODE_BY_SLOT}
 
 
 HOROR_WRITER = """
@@ -286,7 +286,7 @@ def previous_titles():
         return []
     with sqlite3.connect(db) as c:
         return [r[0] for r in c.execute("SELECT title FROM runs WHERE title IS NOT NULL AND slot IN "
-                                        "('pagi','sore','malam') ORDER BY started_at DESC LIMIT 300")]
+                                        "('slot1','slot2','slot3','slot4','slot5','pagi','sore','malam') ORDER BY started_at DESC LIMIT 300")]
 
 
 def tidy(s):

@@ -4,8 +4,8 @@ them to n8n, which uploads them at their publishing time. Mirrors the KUISABON s
 and n8n patterns work.
 
   GET  /health
-  POST /api/run {slot}                    starts a production now (pagi | sore | malam), 202
-  GET  /api/ready?slot=pagi|sore|malam    the newest finished, not yet uploaded video for that slot (404 if none)
+  POST /api/run {slot}                    starts a production now (slot1 ... slot5), 202
+  GET  /api/ready?slot=slot1..slot5        the newest finished, not yet uploaded video for that slot (404 if none)
   GET  /api/videos/<id>.mp4
   POST /api/videos/<id>/uploaded {youtube_id} | /failed {error}
   GET  /api/monitor/overview | history?page&pageSize&status&date | logs?lines   for dashboard-gitgit
@@ -26,8 +26,9 @@ HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), E
 WIB = dt.timezone(dt.timedelta(hours=7))
 # slot -> (production starts, upload time). A Short takes 10-20 minutes to make (most of it Claude writing and
 # fact-checking); the rest of the hour and a half is room for a retry.
-SLOTS = {"pagi": ("08:30", "10:00"), "sore": ("13:30", "15:00"), "malam": ("18:30", "20:00")}
-IDEAS_AT = "06:00"  # shorts/ideas.py reads what is pulling views now and plans pagi, sore and malam
+# Every production starts after midnight: the scheduler, ideas_due and todays() compare times within one day.
+SLOTS = {"slot1": ("01:00", "10:00"), "slot2": ("02:30", "12:00"), "slot3": ("04:00", "15:00"), "slot4": ("05:30", "18:00"), "slot5": ("07:00", "20:00")}
+IDEAS_AT = "00:00"  # shorts/ideas.py reads what is pulling views now and plans the 5 slots
 IDEAS = ROOT / "data" / "ideas"
 STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
 RETRY_UNTIL = dt.timedelta(minutes=25)  # a failed production is tried again until this long before its upload
@@ -375,7 +376,7 @@ class H(BaseHTTPRequestHandler):
         with db() as c:
             runs = {r["youtube_id"]: r for r in c.execute(
                 "SELECT id, slot, title, youtube_id, finished_at FROM runs WHERE status='uploaded' AND youtube_id<>'' "
-                "AND slot IN ('pagi','sore','malam')")}
+                "AND slot IN ('slot1','slot2','slot3','slot4','slot5','pagi','sore','malam')")}
         if method == "GET" and path == "/api/stats/targets":
             since = (now() - dt.timedelta(days=30)).isoformat()
             return self.send(200, [{"youtube_id": k, "run": r["id"]} for k, r in runs.items() if (r["finished_at"] or "") >= since])

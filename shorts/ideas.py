@@ -4,7 +4,7 @@
          channel's own median), plus this month's most-viewed Shorts for a few POV / fact searches; the opening lines
          of the biggest ones are fetched to see how they hook
   ide    Claude (with web search) turns what makes those winners work into three "kalau kamu jadi <profesi>" ideas,
-         one per slot (pagi, sore, malam), each with its angle, a draft hook and the videos it learned from
+         one per slot (slot1-slot5), each with its angle, a draft hook and the videos it learned from
 
 produce.py then writes each slot's Short from its idea (server.py passes --idea).
 
@@ -21,7 +21,7 @@ from produce import MODE_BY_SLOT, SERIES  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
 YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
-SLOTS = ["pagi", "sore", "malam"]
+SLOTS = ["slot1", "slot2", "slot3", "slot4", "slot5"]  # uploads 10:00, 12:00, 15:00, 18:00, 20:00
 # Explainer channels whose Shorts reliably pull millions (median views measured 2026-11-15).
 CHANNELS = ["zackdfilms", "MarkRober", "kurzgesagt", "TheActionLab", "SciShow", "AsapSCIENCE", "TEDEd", "kokbisa"]
 SEARCHES = ["pov kamu jadi", "kalau kamu jadi", "pov jadi pilot", "sehari jadi", "a day in the life of",
@@ -103,19 +103,19 @@ Kamu menerima data Shorts yang sedang meledak: "outlier_channel" (video terbaru 
 
 Tugas:
 1. Pelajari KENAPA video-video itu menang: momen apa yang memancing rasa penasaran (bahaya, keputusan sepersekian detik, angka gila, rahasia di balik pekerjaan, "ternyata begini caranya"), dan bagaimana hook-nya dibuka.
-2. Terjemahkan jadi 3 ide POV PROFESI untuk hari ini, satu per slot (pagi, sore, malam). Tiga ide harus beda kelompok:
+2. Terjemahkan jadi 5 ide POV PROFESI untuk hari ini, satu per slot (slot1 tayang 10:00, slot2 12:00, slot3 15:00, slot4 18:00, slot5 20:00). Kelima ide harus beda profesi dan mencakup ketiga kelompok ini:
    - satu profesi sehari-hari yang akrab di Indonesia (driver ojol, kasir minimarket, tukang parkir, satpam, petugas tol, montir bengkel, penjual bakso, kurir paket, petugas SPBU, dll.),
    - satu profesi berbahaya atau berisiko tinggi (pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN di tiang, ABK kapal, penambang, petugas jalan tol malam, dll.),
    - satu profesi di balik layar yang jarang dilihat orang (petugas menara ATC, dokter IGD, operator bendungan, penjaga mercusuar, teknisi lift, petugas forensik, penerjemah bahasa isyarat, dll.).
-   Rumus tiap ide: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir). Ide pagi dan sore bermode "fakta": berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Ide malam bermode "horor": cerita horor FIKSI orisinal di pekerjaan nyata (paling cocok profesi shift malam atau tempat sepi), ketakutan dari detail janggal (CCTV, jam, panggilan, pintu terkunci, suara dari ruang kosong) tanpa darah, sadis, atau agama/ritual tertentu, tetap dengan 2-3 fakta nyata tentang prosedur atau alat profesinya. Boleh pakai pencarian web untuk memastikan faktanya.
+   Rumus tiap ide: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir). Ide slot1 sampai slot4 bermode "fakta": berpusat pada SATU momen krisis atau keputusan yang benar-benar bisa dialami profesi itu, dijelaskan dengan 4+ fakta nyata (prosedur, angka, alat, aturan). Ide slot5 bermode "horor": cerita horor FIKSI orisinal di pekerjaan nyata (paling cocok profesi shift malam atau tempat sepi), ketakutan dari detail janggal (CCTV, jam, panggilan, pintu terkunci, suara dari ruang kosong) tanpa darah, sadis, atau agama/ritual tertentu, tetap dengan 2-3 fakta nyata tentang prosedur atau alat profesinya. Boleh pakai pencarian web untuk memastikan faktanya.
    Tiap ide masuk SATU seri: {SERIES}.
 3. Hormati profesinya (horor pun tanpa humor dan tanpa merendahkan): nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
-4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: dua dari tiga ide adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), satu ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
+4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: sekitar 70% ide (3-4 dari 5) adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), 1-2 ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
 5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
 
 Balas HANYA JSON:
 {"insight":"3-5 kalimat: pola yang sedang menang hari ini",
- "ideas":[{"slot":"pagi|sore|malam","mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
+ "ideas":[{"slot":"slot1|slot2|slot3|slot4|slot5","mode":"fakta|horor","seri":"salah satu nama seri","topic":"nama profesi singkat, misalnya pilot pesawat",
    "angle":"1-2 kalimat: momen krisis yang dialami dan rasa penasaran yang dijual",
    "hook":"draf kalimat pertama dengan sudut pandang 'kamu': langsung di tengah krisis, ada taruhan nyata (nyawa, uang, waktu, malu), maks 14 kata, tanpa 'gimana jadinya'",
    "facts":["3-5 fakta kunci dengan angka/prosedur, yang sudah kamu cek (horor: fakta nyata tentang profesinya, plus 1 kalimat twist fiksinya)"],

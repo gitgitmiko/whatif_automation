@@ -26,13 +26,14 @@ def mark(i, name, pos, what, body):
 
 nodes = [
     node(1, "Jadwal", "scheduleTrigger", 1.2, [0, 0], {"rule": {"interval": [
-        {"field": "cronExpression", "expression": e} for e in ("0 10 * * *", "30 10 * * *", "0 15 * * *", "30 15 * * *", "0 20 * * *", "30 20 * * *")]}}),
+        {"field": "cronExpression", "expression": e} for e in ("0 10 * * *", "0 12 * * *", "0 15 * * *", "0 18 * * *", "0 20 * * *")]}}),
     node(2, "Tes manual", "manualTrigger", 1, [0, 200], {}),
     node(3, "Pengaturan", "code", 2, [240, 100], {"jsCode":
-        "// 10:00 uploads the 'pagi' Short, 15:00 'sore', 20:00 'malam'; the :30 run is a retry (it finds nothing if :00 worked).\n"
+        "// 10:00, 12:00, 15:00, 18:00, 20:00 uploads slot1 to slot5\n"
         "// Change privacy to 'unlisted' or 'private' to review videos before they go public.\n"
         "const hour = $now.setZone('Asia/Jakarta').hour;\n"
-        "return [{ json: { slot: hour < 13 ? 'pagi' : hour < 18 ? 'sore' : 'malam', privacy: 'public' } }];"}),
+        "const slot = hour < 11 ? 'slot1' : hour < 13 ? 'slot2' : hour < 16 ? 'slot3' : hour < 19 ? 'slot4' : 'slot5';\n"
+        "return [{ json: { slot, privacy: 'public' } }];"}),
     node(4, "Cek video siap", "httpRequest", 4.2, [480, 100], {
         "url": f"={API}/api/ready?slot={{{{ $json.slot }}}}", "sendHeaders": True, "headerParameters": header(),
         "options": {"timeout": 30000, "response": {"response": {"fullResponse": True, "neverError": True}}}}),
