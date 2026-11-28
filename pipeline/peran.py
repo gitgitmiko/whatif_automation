@@ -9,6 +9,11 @@ try:
     from peran_ai import ask_json as _ask_json
 except ImportError:  # dashboard tidak ada
     _ask_json = None
+try:
+    from cadangan import catat  # noqa: F401 - riwayat cadangan di dashboard (+ WA bila darurat)
+except ImportError:
+    def catat(channel, jenis, pesan, darurat=False):
+        print(f"cadangan {channel}/{jenis}: {pesan}", flush=True)
 
 MODELS = {"riset": "sonnet", "penulis": "sonnet", "juri": "opus", "cek": "opus"}
 

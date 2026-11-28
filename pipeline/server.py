@@ -21,6 +21,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
 from common import ROOT, RUNS, STYLE_REMOTION_FROM, load, log, save
+from peran import catat
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
@@ -151,6 +152,7 @@ def produce(slot):
     except Exception as e:
         tail = " | ".join((d / "run.log").read_text().strip().splitlines()[-3:]) if (d / "run.log").exists() else ""
         update(rid, status="failed", stage=None, finished_at=now().isoformat(), error=f"{e} :: {tail}"[:1000])
+        catat("whatif", "produksi-gagal", f"{rid} gagal: {str(e)[:150]}")
         log(rid, "failed:", e, tail)
     finally:
         state["busy"] = None
@@ -407,6 +409,8 @@ class H(BaseHTTPRequestHandler):
                 r = next(iter(reserve_runs()), None)
                 if r:
                     log("ready:", slot, "has no video of its own, serving reserve", r["id"])
+                    catat("whatif", "stok-terpakai", f"produksi {slot} gagal, diunggah video stok '{r['title']}'. "
+                          f"Sisa stok: {reserve_count() - 1} video", darurat=True)
             if not r:
                 return self.send(404, {"error": f"no finished video waiting for slot {slot}"})
             data = json.loads(r["data"])

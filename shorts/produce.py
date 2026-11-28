@@ -21,7 +21,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import RUNS, claude_json, load, log, save  # noqa: E402
-from peran import asker  # noqa: E402
+from peran import asker, catat  # noqa: E402
 
 VOICE, RATE = "id-ID-ArdiNeural", "+8%"
 FPS, GAP = 30, 0.25  # a short breath between scenes
@@ -658,6 +658,7 @@ def voice_piper(s, d, pub):
     f = d / "tts" / "piper.wav"
     with wave.open(str(f), "wb") as w:
         PiperVoice.load(str(PIPER_VOICE)).synthesize_wav("\n".join(x["text"] for x in s["scenes"]), w)
+    catat("whatif", "suara-piper", f"Gemini dan edge-tts gagal, '{s.get('title', '')}' disuarakan Piper lokal (lebih datar)", darurat=True)
     return finish_take(s, d, pub, f, tokens, tts.heard(f), "piper (lokal, mode darurat)")
 
 
