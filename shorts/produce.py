@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import RUNS, claude_json, load, log, save  # noqa: E402
+from peran import asker  # noqa: E402
 
 VOICE, RATE = "id-ID-ArdiNeural", "+8%"
 FPS, GAP = 30, 0.25  # a short breath between scenes
@@ -602,6 +603,13 @@ def voice_gemini(s, d, pub):
             log(f"{model} failed: {str(e)[:300]}")
     else:
         raise RuntimeError(f"no Gemini take: {err}")
+    return finish_take(s, d, pub, f, tokens, spoken, f"gemini {tts.model} {tts.GEMINI_VOICE}")
+
+
+def finish_take(s, d, pub, f, tokens, spoken, label):
+    """One take of the whole story (wav f, whisper words spoken) -> trimmed voice.mp3, scene times, props.json."""
+    import numpy as np
+    import tts
     raw = tts.pcm(f)
     total = len(raw) / 2 / tts.SR
     timed = tts.align(tokens, spoken)
@@ -633,8 +641,24 @@ def voice_gemini(s, d, pub):
         at += n
     props = {**props_from(s, scenes, round(length * FPS)), "narration": "voice.mp3"}
     save(d / "props.json", props)
-    log(f"voice: gemini {tts.model} {tts.GEMINI_VOICE}, {length:.1f} s")
+    log(f"voice: {label}, {length:.1f} s")
     return props
+
+
+PIPER_VOICE = ROOT / "models" / "piper" / "id_ID-news_tts-medium.onnx"
+
+
+def voice_piper(s, d, pub):
+    """Last resort when Gemini and edge-tts are both out: Piper on this machine, flatter newsreader voice, no network."""
+    import wave
+    import tts
+    from piper import PiperVoice
+    tokens = [w for x in s["scenes"] for w in x["text"].split()]
+    (d / "tts").mkdir(exist_ok=True)
+    f = d / "tts" / "piper.wav"
+    with wave.open(str(f), "wb") as w:
+        PiperVoice.load(str(PIPER_VOICE)).synthesize_wav("\n".join(x["text"] for x in s["scenes"]), w)
+    return finish_take(s, d, pub, f, tokens, tts.heard(f), "piper (lokal, mode darurat)")
 
 
 def voice_edge(s, d, pub):
@@ -673,7 +697,11 @@ def voice(s, d, pub):
         return voice_gemini(s, d, pub)
     except Exception as e:  # noqa: BLE001 - the video still gets a voice
         log(f"Gemini voice failed, edge-tts reads it: {str(e)[:300]}")
+    try:
         return voice_edge(s, d, pub)
+    except Exception as e:  # noqa: BLE001 - Microsoft down too: the local voice
+        log(f"edge-tts failed, Piper reads it: {str(e)[:300]}")
+        return voice_piper(s, d, pub)
 
 
 def render(d, pub, gl=None):
@@ -695,7 +723,11 @@ def brief_for(idea=None, topic=None):
 
 
 def opus(system, user):
-    return claude_json("opus", system, user, web=True)
+    try:
+        return claude_json("opus", system, user, web=True)
+    except Exception as e:  # noqa: BLE001 - Claude down: the dashboard's AI chain (MiMo, free 9router models)
+        log(f"Opus failed, AI fallback chain: {str(e)[:200]}")
+        return asker("penulis")(system, user)
 
 
 def write_draft(brief, three, ending, mode, ask=opus, world=None):
