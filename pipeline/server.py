@@ -243,6 +243,8 @@ def scheduler():
         if reserve_due(t):
             log("scheduler: making a reserve Short")
             start(RESERVE_SLOT)
+        if t.minute % 5 == 0 and t.second < 30:  # MySQL copy (pipeline/mirror.py) in its own process, never awaited
+            subprocess.Popen([PYTHON, PIPE / "mirror.py"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if t.minute == 0 and t.second < 30:
             cutoff = time.time() - KEEP_DAYS * 86400
             with db() as c:  # finished but not uploaded = reserve stock: keep it
