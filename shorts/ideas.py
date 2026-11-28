@@ -21,7 +21,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import STYLE_REMOTION_FROM, load, log, save  # noqa: E402
 from peran import ask_json, asker  # noqa: E402
-from produce import ENDING_BY_SLOT, SERIES, WORLDS, brief_for, check_draft, write_draft  # noqa: E402
+from produce import ENDING_BY_SLOT, SERIES, WORLDS, YT_POLICY, brief_for, check_draft, policy_hit, write_draft  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
 YTDLP = ROOT / ".venv" / "bin" / "yt-dlp"
@@ -115,7 +115,8 @@ Tugas:
    Tiap ide masuk SATU seri: {SERIES}.
 3. Hormati profesinya (horor pun tanpa humor dan tanpa merendahkan): nadanya kagum dan empatik ("ternyata berat banget"), BUKAN mengejek atau merendahkan. Jangan menyebut perusahaan/merek tertentu secara negatif.
 4. Kalau ada "performa_channel_sendiri" (data YouTube Analytics video channel ini), pakai pembagian 70/20/10: sekitar 70% ide (7 dari 10) adalah VARIASI dari yang terbukti paling banyak ditonton dan paling lama ditonton di channel ini (seri, kelompok profesi, jenis momen, atau mode yang sama, tapi topik baru), 2-3 ide EKSPERIMEN (profesi, seri, atau sudut yang belum dicoba); kira-kira sekali dalam sepuluh ide, eksperimennya boleh IDE GILA (misalnya penjaga penjara tahun 2099, petugas di stasiun luar angkasa). Perhatikan juga "turun_di_detik": kalau penonton banyak pergi di detik awal, hook-nya yang harus lebih kuat. Tulis alasannya di "insight".
-5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis.
+5. DILARANG mengulang atau sangat mirip dengan topik yang sudah pernah dibuat (daftar diberikan). Hindari politik, agama, SARA, tragedi nyata tertentu (kecelakaan/bencana spesifik yang bisa dicari namanya), polisi/tentara dalam konteks kontroversial, hal jorok, dan sadis. Semua ide WAJIB lolos ATURAN YOUTUBE di bawah; ide yang melanggar jangan diajukan, ganti dengan ide lain.
+{YT_POLICY}
 6. DUNIA 3D YANG TERSEDIA: video dianimasikan sebagai 3D real-time di dunia yang sudah dibangun. Tiap ide WAJIB menyebut "world": nama dunia yang paling cocok dari daftar ini, atau "flow" kalau benar-benar tidak ada yang cocok (ide itu lalu digambar dengan cara lama). Daftar dunia ini TIDAK boleh memengaruhi pilihan topik: pilih ide terbaik seperti biasa, lalu beri label dunianya; ide yang tidak cocok dengan dunia mana pun cukup diberi "flow".
 {WORLDS}
 
@@ -149,7 +150,7 @@ def own_performance():
             "rata_rata_views": round(sum(v["views"] for v in vids) / len(vids))}
 
 
-SYS = SYS.replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
+SYS = SYS.replace("{YT_POLICY}", YT_POLICY).replace("{SERIES}", "; ".join(f"{k} = {v}" for k, v in SERIES.items()))
 # The 3D worlds count only once tomorrow (the day being researched) is on or after STYLE_REMOTION_FROM; before that
 # the research, drafts and judging stay exactly as they were.
 ACTIVE = (dt.date.today() + dt.timedelta(days=1)).isoformat() >= STYLE_REMOTION_FROM
@@ -180,6 +181,10 @@ klik, dan nyambung dengan yang sedang ramai (nilai plus). Potong nilai keras unt
 cerita datar, premis mirip yang sudah dibuat, nada mengejek profesi, atau fakta yang meragukan.
 Bandingkan antar naskah; jangan beri semua nilai yang sama.
 Balas HANYA JSON: {"nilai":[angka per naskah sesuai urutan],"alasan":["1 kalimat per naskah, sesuai urutan"]}"""
+
+
+def idea_text(i):
+    return " ".join([i.get("topic") or "", i.get("angle") or "", i.get("hook") or ""] + [str(f) for f in i.get("facts") or []])
 
 
 def judge(drafts):
@@ -239,6 +244,9 @@ def main(day=None):
     out, who = ask_json("riset", research_sys(), json.dumps(brief, ensure_ascii=False), web=True)
     log(f"riset oleh {who}")
     ideas = [i for i in out.get("ideas", []) if i.get("topic")]
+    for i in [i for i in ideas if policy_hit(idea_text(i))]:
+        log(f"ide ditolak (aturan YouTube, '{policy_hit(idea_text(i))}'): {i['topic']}")
+        ideas.remove(i)
     if not ideas:
         raise RuntimeError("no ideas in Claude's reply")
     for i in ideas:

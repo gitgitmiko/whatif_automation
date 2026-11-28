@@ -289,6 +289,20 @@ def test_frame_check():
     assert produce.frame_check(flat, one) == ["adegan 0: datar"]
 
 
+def test_youtube_policy():
+    import produce, ideas
+    for bad in ["Tukang parkir yang ketagihan judi online", "Kurir yang ternyata mengantar sabu-sabu", "rencana bunuh diri",
+                "cara merakit bom di dapur", "Pinjol menagih jam 3 pagi"]:
+        assert produce.policy_hit(bad), bad
+    for ok in ["Tekanan darah pasien turun drastis", "taruhan nyata: nyawa penumpang", "seksi IGD penuh", "polisi lalu lintas",
+               "ikan goreng di dapur kapal", "Cerita fiksi. Kisah nyata? Bukan."]:
+        assert not produce.policy_hit(ok), ok
+    w, c = produce.prompts(True, "loop", "horor")
+    assert "ATURAN YOUTUBE" in w and "ATURAN YOUTUBE" in c and c.index("ATURAN YOUTUBE") < c.index("Balas HANYA JSON")
+    assert "ATURAN YOUTUBE" in ideas.SYS and "{YT_POLICY}" not in ideas.SYS
+    assert produce.policy_hit(produce.script_text({"yt_title": "x", "scenes": [{"text": "main slot online"}]}))
+
+
 if __name__ == "__main__":
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
     failed = 0

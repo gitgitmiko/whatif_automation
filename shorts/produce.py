@@ -73,6 +73,22 @@ LIBRARY = """JENIS VISUAL (field "visual" tiap adegan; semua teks di layar HURUF
 - {"type":"wind","emoji":"🌴","stamp":"..."}  angin kencang menerpa sesuatu.
 "stamp" opsional, maks 3 kata / 18 huruf, menegaskan momen di kata cue (contoh "STOP!", "3× LEBIH KENCANG", "TSUNAMI RAKSASA"). Emoji harus emoji Unicode standar yang umum. Tokoh adalah bintangnya: kira-kira separuh adegan memakai "pov" (moodnya berganti-ganti mengikuti cerita), sisanya visual fakta yang mendukung angka. Jenis selain pov jangan dipakai lebih dari 2 kali."""
 
+# YouTube Community Guidelines, advertiser-friendly rules and the inauthentic-content (mass-produced AI) monetization
+# policy, condensed for the writer, the checker and the 19:00 research (support.google.com/youtube/answer/9288567).
+YT_POLICY = """ATURAN YOUTUBE (WAJIB; ide atau naskah yang melanggar DITOLAK, jangan dicoba diakali): DILARANG
+- konten seksual, ketelanjangan, atau sugestif; apa pun yang menyeksualisasi, membahayakan, atau mengeksploitasi anak (tokoh anak hanya sebagai orang yang ditolong, tanpa kekerasan terhadapnya);
+- bunuh diri, melukai diri, gangguan makan, dalam bentuk apa pun, termasuk sebagai twist horor;
+- kekerasan grafis atau sadis: darah muncrat, luka terbuka, mayat, mutilasi, penyiksaan, kecelakaan yang diperlihatkan mengerikan; kematian cukup tersirat, tidak dipertontonkan;
+- tindakan berbahaya yang bisa ditiru (tantangan, aksi nekat, eksperimen kimia/listrik/api di rumah) atau cara membuat senjata, bahan peledak, racun, narkoba, atau cara membobol/meretas/mencuri; prosedur keselamatan hanya dijelaskan sebagai pengetahuan, bukan tutorial;
+- narkoba dan obat terlarang, senjata api secara glamor, judi dan judi online/slot, pinjol ilegal, investasi bodong, skema cepat kaya, penipuan;
+- ujaran kebencian atau merendahkan suku, agama, ras, gender, orientasi, disabilitas; pelecehan atau mengejek orang/kelompok; organisasi teroris, ekstremis, atau kriminal;
+- misinformasi berbahaya: klaim medis/kesehatan palsu, obat atau pengobatan yang tidak terbukti, teori konspirasi, menyebut fiksi sebagai kisah nyata, klaim yang tidak bisa dicek;
+- tokoh nyata yang masih hidup, korban nyata, tragedi/bencana/kecelakaan nyata yang spesifik, perusahaan/merek/instansi nyata yang dirugikan atau dituduh;
+- politik, pemilu, agama, SARA, konflik/perang yang sedang terjadi, polisi/tentara dalam konteks kontroversial;
+- judul, hook, atau thumbnail yang menipu (clickbait yang tidak ada di isi video);
+- konten generik yang terasa diproduksi massal: tiap video harus punya cerita, fakta, dan sudut yang benar-benar berbeda, bukan mengganti nama profesi di template yang sama;
+- hal jorok atau menjijikkan, kata kasar, sumpah serapah."""
+
 WRITER_SYS = f"""Kamu penulis naskah YouTube Shorts untuk channel "Gimana Jadinya?". Formatnya POINT OF VIEW: setiap video mengajak penonton membayangkan "gimana jadinya kalau KAMU jadi <profesi>", lalu menjalani SATU momen paling menegangkan dari pekerjaan itu, penuh fakta nyata yang mengejutkan, dalam animasi grafis 35-50 detik. Penonton: orang Indonesia umum, remaja sampai dewasa.
 
 1. Pilih SATU profesi nyata yang dikenal orang Indonesia (sehari-hari seperti driver ojol, kasir minimarket, tukang parkir, satpam; berbahaya seperti pilot, pemadam kebakaran, penyelam, tim SAR, teknisi PLN; atau di balik layar seperti petugas menara ATC, dokter IGD, operator bendungan) dan SATU momen krisis atau keputusan sulit yang benar-benar bisa dialami profesi itu. Rumusnya: PROFESI + WAKTU ATAU KEADAAN EKSTREM + KEJADIAN TAK TERDUGA (contoh: dokter IGD saat malam tahun baru, kasir minimarket pukul 02.00, kurir saat banjir, teknisi server saat semua bank sedang tutup buku). Jam yang spesifik ("Pukul 03.17") membuat momen langsung terbayang dan bisa dipakai lagi di akhir untuk loop. Hormati profesinya: nada kagum dan empatik, BUKAN mengejek. Kalau ada "topik_wajib", pakai itu. Kalau ada "ide_dari_riset" (hasil riset Shorts yang sedang meledak), ikuti sudut ceritanya, kembangkan draf hook-nya (boleh dipertajam, tetap ikuti aturan hook di bawah), dan tetap cek ulang faktanya. Boleh terinspirasi dari saran pencarian YouTube yang diberikan. DILARANG mengulang atau sangat mirip dengan yang sudah pernah dibuat. Hindari politik, agama, SARA, tragedi nyata tertentu, polisi/tentara dalam konteks kontroversial, hal jorok, dan hal sadis.
@@ -339,6 +355,9 @@ def prompts(three, ending, mode="fakta"):
     if mode == "horor":
         writer = writer.replace("\n\nBalas HANYA JSON:", HOROR_WRITER + "\n\nBalas HANYA JSON:", 1)
         checker = checker.replace("\nBalas HANYA JSON:", HOROR_CHECK + "\nBalas HANYA JSON:", 1)
+    writer = writer.replace("\n\nBalas HANYA JSON:", "\n\n" + YT_POLICY + "\n\nBalas HANYA JSON:", 1)
+    checker = checker.replace("\nBalas HANYA JSON:", "\n\nPeriksa juga ATURAN YOUTUBE ini; tulis ulang bagian yang melanggar "
+                              "jadi aman tanpa mengubah topik, dan catat di \"issues\":\n" + YT_POLICY + "\nBalas HANYA JSON:", 1)
     return writer, checker
 
 
@@ -690,6 +709,25 @@ def write_draft(brief, three, ending, mode, ask=opus, world=None):
     return draft
 
 
+# A last, dumb safety net after the AI checks: words that never belong in this channel's Shorts. Kept narrow so a
+# profession's normal words ("tekanan darah", "taruhan nyata", "seksi IGD", "polisi") still pass.
+BANNED = re.compile(r"\b(bunuh diri|gantung diri|menyayat (?:diri|tangan)|self[- ]?harm|suicide|judi|judol|slot online|"
+                    r"togel|kasino|casino|narkoba|sabu-sabu|ganja|kokain|heroin|ekstasi|pinjol|investasi bodong|cepat kaya|"
+                    r"porno\w*|bugil|telanjang|seks|sex|pedofil\w*|pemerkosaan|mutilasi|gore|teroris\w*|isis|"
+                    r"merakit (?:bom|senjata)|bom rakitan|senjata rakitan)\b", re.I)
+
+
+def policy_hit(text):
+    """The first banned word in text, or None."""
+    m = BANNED.search(text or "")
+    return m.group(0) if m else None
+
+
+def script_text(s):
+    return " ".join([s.get("yt_title") or s.get("title") or "", s.get("description") or ""]
+                    + [sc.get("text", "") for sc in s.get("scenes", [])])
+
+
 def fixer(three, world):
     return tidy_remotion if world else tidy3d if three else tidy
 
@@ -714,6 +752,9 @@ def check_draft(draft, three, ending, mode, ask=opus, world=None):
         s = fix(again.get("script") or s)
         if cliffhanger(s):
             raise RuntimeError(f"ending still a cliffhanger: {s['scenes'][-1]['text']!r}")
+    hit = policy_hit(script_text(s))
+    if hit:
+        raise RuntimeError(f"YouTube policy: the checked script still mentions {hit!r}")
     return s
 
 
