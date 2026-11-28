@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).parent))
 from common import ROOT, RUNS, STYLE_REMOTION_FROM, load, log, save
 from peran import catat
+import bank
 
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l) if (ROOT / ".env").exists() else {}
 HOST, PORT, TOKEN = ENV.get("HOST", "172.18.0.1"), int(ENV.get("PORT", 8798)), ENV.get("SERVICE_TOKEN", "")
@@ -119,6 +120,7 @@ def produce(slot):
         c.execute("INSERT INTO runs (id, slot, status, stage, started_at) VALUES (?,?,?,?,?)",
                   (rid, slot, "running", "naskah", now().isoformat()))
     state["busy"] = rid
+    banked, used_script = None, False
     try:
         ideas = IDEAS / f"{now():%Y-%m-%d}.json"
         cmd = [PYTHON, SHORTS / "produce.py", rid]
@@ -129,6 +131,17 @@ def produce(slot):
             if idea.get("script"):  # judged and fact-checked at 19:00: render it as is in the style it was written for
                 research = d / "script.research.json"
                 save(research, idea["script"])
+        if research is None and (banked := bank.next_entry()):
+            # reserve slot, or the evening research is missing: a fact-checked script from the bank, no AI writing
+            bf, bi, be = banked
+            research = d / "script.research.json"
+            save(research, be["script"])
+            idea = idea or be["idea"]
+            cmd += ["--mode", be["script"].get("mode") or be["idea"].get("mode") or "fakta"]  # attempts() adds --script
+            log(rid, f"from the script bank: {be['script'].get('yt_title')} ({bf.stem}, nilai {be.get('nilai')})")
+            if slot != RESERVE_SLOT:
+                catat("whatif", "bank-naskah", f"{slot} tidak punya naskah riset malam, dibuat dari bank: "
+                      f"'{be['script'].get('yt_title')}' (nilai {be.get('nilai')})", darurat=True)
         tries = attempts(idea, now().date().isoformat(), research)
         with open(d / "run.log", "w") as f:
             for k, extra in enumerate(tries):
@@ -136,6 +149,7 @@ def produce(slot):
                 try:
                     subprocess.run(cmd + extra, stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, check=True,
                                    timeout=3600 if not extra else 2700)
+                    used_script = "--script" in extra
                     break
                 except Exception as e:  # world/Flow down or out of quota: the next style still makes the slot
                     if last:
@@ -149,10 +163,14 @@ def produce(slot):
         update(rid, topic=s["title"], title=s["yt_title"])
         mark_rendered(rid, d, s)
         log(rid, "rendered", s["yt_title"])
+        if banked:  # a fallback style that wrote its own script leaves the banked one for the next run
+            bank.mark(bf, bi, f"produksi {rid}") if used_script else log(rid, "made without the banked script, it stays in the bank")
     except Exception as e:
         tail = " | ".join((d / "run.log").read_text().strip().splitlines()[-3:]) if (d / "run.log").exists() else ""
         update(rid, status="failed", stage=None, finished_at=now().isoformat(), error=f"{e} :: {tail}"[:1000])
         catat("whatif", "produksi-gagal", f"{rid} gagal: {str(e)[:150]}")
+        if banked:  # the next run takes the next script
+            bank.mark(bf, bi, f"gagal: {str(e)[:150]}")
         log(rid, "failed:", e, tail)
     finally:
         state["busy"] = None

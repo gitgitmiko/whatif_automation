@@ -21,6 +21,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from common import STYLE_REMOTION_FROM, load, log, save  # noqa: E402
 from peran import ask_json, asker  # noqa: E402
+import bank  # noqa: E402
 from produce import ENDING_BY_SLOT, SERIES, WORLDS, YT_POLICY, brief_for, check_draft, policy_hit, write_draft  # noqa: E402
 
 IDEAS = ROOT / "data" / "ideas"
@@ -226,6 +227,31 @@ def pick(drafts):
     return chosen
 
 
+BANK_PER_NIGHT = 2
+
+
+def to_bank(drafts, chosen):
+    """The best drafts that got no slot, fact-checked like the chosen ones: the script bank used by the reserve slot
+    and by slots whose evening research is missing (no AI writing needed then)."""
+    taken = {id(x) for x in chosen.values()}
+    rest = sorted((x for x in drafts if id(x) not in taken and x.get("status") != "gagal cek fakta"),
+                  key=lambda x: x.get("nilai") or 0, reverse=True)
+    out = []
+    for x in rest:
+        if len(out) >= BANK_PER_NIGHT or (x.get("nilai") or 0) < bank.MIN_NILAI:
+            break
+        try:
+            script = check_draft(x["draft"], True, ENDING, x["idea"]["mode"], asker("cek"), world=world_of(x["idea"]))
+        except Exception as e:  # noqa: BLE001 - not banked, the next one is tried
+            log(f"bank: cek fakta gagal untuk '{x['idea']['topic']}': {str(e)[:200]}")
+            x["status"] = "gagal cek fakta"
+            continue
+        x["status"] = "bank naskah"
+        out.append({"idea": x["idea"], "nilai": x.get("nilai"), "alasan": x.get("alasan", ""), "script": script})
+        log(f"bank ({x.get('nilai')}): kamu jadi {x['idea']['topic']} | {script.get('yt_title')}")
+    return out
+
+
 def main(day=None):
     day = day or (dt.date.today() + dt.timedelta(days=1)).isoformat()  # researched the evening before
     IDEAS.mkdir(parents=True, exist_ok=True)
@@ -272,12 +298,14 @@ def main(day=None):
               "alasan": x.get("alasan", ""), "script": x["script"]} for s, x in chosen.items()]
     for x in slots:
         log(f"{x['slot']} ({x['nilai']}): kamu jadi {x['topic']} | {x['script'].get('yt_title')}")
+    banked = to_bank(drafts, chosen)
     summary = [{"topic": x["idea"]["topic"], "mode": x["idea"]["mode"], "title": x["draft"].get("yt_title") or x["draft"].get("title"),
                 "hook": (x["draft"].get("scenes") or [{}])[0].get("text", ""), "nilai": x.get("nilai"), "alasan": x.get("alasan", ""),
                 "slot": x.get("slot"), "status": x.get("status")} for x in drafts]
     save(IDEAS / f"{day}.json", {"date": day, "insight": out.get("insight"), "juri": juri or "tidak ada (urutan tulis)",
                                  "ideas": slots, "drafts": summary, "data": {"outliers": outliers, "search": hits}})
     log("saved", IDEAS / f"{day}.json")
+    bank.add(day, banked)
 
 
 if __name__ == "__main__":
