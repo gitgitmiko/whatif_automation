@@ -5,7 +5,8 @@ and n8n patterns work.
 
   GET  /health
   POST /api/run {slot}                    starts a production now (slot1 ... slot5), 202
-  GET  /api/ready?slot=slot1..slot5        the newest finished, not yet uploaded video for that slot (404 if none)
+  GET  /api/ready?slot=slot1..slot5        the newest finished, not yet uploaded video for that slot; when that slot's
+                                           production failed, a video from the reserve stock (404 if none)
   GET  /api/videos/<id>.mp4
   POST /api/videos/<id>/uploaded {youtube_id} | /failed {error}
   GET  /api/monitor/overview | history?page&pageSize&status&date | logs?lines   for dashboard-gitgit
@@ -28,6 +29,9 @@ WIB = dt.timezone(dt.timedelta(hours=7))
 # fact-checking); the rest of the hour and a half is room for a retry.
 # Every production starts after midnight: the scheduler, ideas_due and todays() compare times within one day.
 SLOTS = {"slot1": ("01:00", "10:00"), "slot2": ("02:30", "12:00"), "slot3": ("04:00", "15:00"), "slot4": ("05:30", "18:00"), "slot5": ("07:00", "20:00")}
+# Reserve stock: a few extra Shorts a day, kept for slots whose production fails (Claude/Flow down). /api/ready falls
+# back to them, the newest first.
+RESERVE_SLOT, RESERVE_TARGET, RESERVE_PER_DAY, RESERVE_WINDOW = "cadangan", 15, 2, ("08:30", "18:30")
 IDEAS_AT = "19:00"  # shorts/ideas.py researches, drafts and judges TOMORROW's 5 Shorts (Sonnet writes, Opus judges)
 IDEAS = ROOT / "data" / "ideas"
 STYLE_3D_FROM = "2026-11-16"  # from this day each Short is drawn as Flow 3D renders, the cartoon style is the fallback
@@ -216,12 +220,44 @@ def scheduler():
                 continue
             log("scheduler:", "retrying" if runs else "starting", slot)
             start(slot)
+        if reserve_due(t):
+            log("scheduler: making a reserve Short")
+            start(RESERVE_SLOT)
         if t.minute == 0 and t.second < 30:
             cutoff = time.time() - KEEP_DAYS * 86400
+            with db() as c:  # finished but not uploaded = reserve stock: keep it
+                waiting = {r["id"] for r in c.execute("SELECT id FROM runs WHERE status='rendered'")}
             for d in RUNS.glob("2*-*"):
-                if d.is_dir() and d.stat().st_mtime < cutoff:
+                if d.is_dir() and d.stat().st_mtime < cutoff and d.name not in waiting:
                     shutil.rmtree(d, ignore_errors=True)
         time.sleep(30)
+
+
+def reserve_runs():
+    """Finished, not uploaded Shorts no slot of today will take (the reserve slot's and real slots' leftovers from
+    earlier days; old samples don't count), newest first, only those whose video still exists."""
+    with db() as c:
+        rows = c.execute("SELECT * FROM runs WHERE status='rendered' AND (slot=? OR (slot IN (%s) AND substr(started_at,1,10) < ?)) "
+                         "ORDER BY finished_at DESC" % ",".join("?" * len(SLOTS)),
+                         (RESERVE_SLOT, *SLOTS, now().date().isoformat())).fetchall()
+    return [r for r in rows if (RUNS / r["id"] / "final.mp4").exists()]
+
+
+def reserve_count():
+    return len(reserve_runs())
+
+
+def reserve_due(t):
+    lo, hi = (t.replace(hour=int(x[:2]), minute=int(x[3:]), second=0, microsecond=0) for x in RESERVE_WINDOW)
+    if ENV.get("PAUSE_PRODUCTION") == "1" or state["busy"] or not lo <= t < hi or reserve_count() >= RESERVE_TARGET:
+        return False
+    runs = todays(RESERVE_SLOT, t.date())
+    if sum(r["status"] != "failed" for r in runs) >= RESERVE_PER_DAY or len(runs) >= RESERVE_PER_DAY + 2:
+        return False
+    if any(r["status"] == "running" for r in runs):
+        return False
+    # a failed reserve waits 30 minutes: it is never urgent
+    return not (runs and runs[-1]["finished_at"] and t - dt.datetime.fromisoformat(runs[-1]["finished_at"]) < dt.timedelta(minutes=30))
 
 
 def preview_key(rid):
@@ -367,6 +403,10 @@ class H(BaseHTTPRequestHandler):
             with db() as c:
                 r = c.execute("SELECT * FROM runs WHERE status='rendered' AND slot=? ORDER BY finished_at DESC LIMIT 1",
                               (slot,)).fetchone()
+            if not r and slot in SLOTS:  # this slot's production failed: take the newest reserve Short
+                r = next(iter(reserve_runs()), None)
+                if r:
+                    log("ready:", slot, "has no video of its own, serving reserve", r["id"])
             if not r:
                 return self.send(404, {"error": f"no finished video waiting for slot {slot}"})
             data = json.loads(r["data"])
